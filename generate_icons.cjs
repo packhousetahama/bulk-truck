@@ -1,0 +1,111 @@
+const { Resvg } = require('@resvg/resvg-js');
+const fs = require('fs');
+const path = require('path');
+
+const publicDir = path.join(__dirname, 'public');
+fs.mkdirSync(publicDir, { recursive: true });
+
+// Dedicated Bulk Loading Icon (Industrial Amber Theme with Silo + Bulk Tanker)
+const standardSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="bgGrad" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#1E1B18"/>
+      <stop offset="100%" stop-color="#0F0E0C"/>
+    </linearGradient>
+    <linearGradient id="amberGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#FBBF24"/>
+      <stop offset="100%" stop-color="#D97706"/>
+    </linearGradient>
+    <linearGradient id="siloGrad" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#4B5563"/>
+      <stop offset="50%" stop-color="#9CA3AF"/>
+      <stop offset="100%" stop-color="#374151"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Background Card -->
+  <rect width="512" height="512" rx="108" fill="url(#bgGrad)"/>
+  <rect x="16" y="16" width="480" height="480" rx="92" fill="none" stroke="#D97706" stroke-width="8" stroke-opacity="0.4"/>
+
+  <!-- Industrial Bulk Silos in Background -->
+  <g transform="translate(140, 75)">
+    <!-- Silo 1 -->
+    <rect x="0" y="30" width="80" height="150" rx="10" fill="url(#siloGrad)"/>
+    <path d="M 0 30 C 0 5, 80 5, 80 30 Z" fill="#6B7280"/>
+    <path d="M 0 180 L 40 220 L 80 180 Z" fill="#374151"/>
+    <rect x="34" y="220" width="12" height="35" fill="#F59E0B"/>
+    
+    <!-- Silo 2 -->
+    <rect x="110" y="10" width="90" height="170" rx="12" fill="url(#siloGrad)"/>
+    <path d="M 110 10 C 110 -15, 200 -15, 200 10 Z" fill="#9CA3AF"/>
+    <path d="M 110 180 L 155 225 L 200 180 Z" fill="#4B5563"/>
+    <rect x="149" y="225" width="12" height="30" fill="#F59E0B"/>
+
+    <!-- Silo Ladders / Lines -->
+    <line x1="20" y1="40" x2="60" y2="40" stroke="#1F2937" stroke-width="3"/>
+    <line x1="20" y1="65" x2="60" y2="65" stroke="#1F2937" stroke-width="3"/>
+    <line x1="20" y1="90" x2="60" y2="90" stroke="#1F2937" stroke-width="3"/>
+    <line x1="20" y1="115" x2="60" y2="115" stroke="#1F2937" stroke-width="3"/>
+  </g>
+
+  <!-- Bulk Tanker Truck Silhouette & Loading Spout -->
+  <g transform="translate(70, 275)">
+    <!-- Road Surface -->
+    <line x1="0" y1="135" x2="370" y2="135" stroke="#4B5563" stroke-width="6" stroke-linecap="round"/>
+    
+    <!-- Bulk Cement Tanker Bulbs (Cylindrical Pressure Vessel) -->
+    <ellipse cx="140" cy="55" rx="105" ry="50" fill="url(#amberGrad)"/>
+    <circle cx="100" cy="55" r="30" fill="#B45309" fill-opacity="0.3"/>
+    <circle cx="180" cy="55" r="30" fill="#B45309" fill-opacity="0.3"/>
+    
+    <!-- Tanker Top Loading Manholes -->
+    <rect x="90" y="2" width="20" height="8" rx="3" fill="#FEF3C7"/>
+    <rect x="170" y="2" width="20" height="8" rx="3" fill="#FEF3C7"/>
+
+    <!-- Truck Cab -->
+    <path d="M 245 40 L 295 40 L 315 75 L 315 110 L 245 110 Z" fill="#F59E0B"/>
+    <rect x="270" y="50" width="35" height="25" rx="4" fill="#1F2937"/>
+    
+    <!-- Chassis & Wheels -->
+    <rect x="45" y="105" width="260" height="10" fill="#374151"/>
+    <!-- Wheels -->
+    <circle cx="70" cy="115" r="18" fill="#111827" stroke="#9CA3AF" stroke-width="6"/>
+    <circle cx="110" cy="115" r="18" fill="#111827" stroke="#9CA3AF" stroke-width="6"/>
+    <circle cx="215" cy="115" r="18" fill="#111827" stroke="#9CA3AF" stroke-width="6"/>
+    <circle cx="285" cy="115" r="18" fill="#111827" stroke="#9CA3AF" stroke-width="6"/>
+  </g>
+
+  <!-- SPCC BULK Badge Text -->
+  <rect x="116" y="420" width="280" height="52" rx="14" fill="#D97706"/>
+  <text x="256" y="456" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif" font-size="26" font-weight="900" fill="#FFFFFF" text-anchor="middle" letter-spacing="3">SPCC BULK · سائب</text>
+</svg>`;
+
+const maskableSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <rect width="512" height="512" fill="#1E1B18"/>
+  <g transform="translate(51.2, 51.2) scale(0.8)">
+    ${standardSvg.replace(/<svg[^>]*>|<\/svg>/g, '')}
+  </g>
+</svg>`;
+
+fs.writeFileSync(path.join(publicDir, 'icon-512.svg'), standardSvg);
+fs.writeFileSync(path.join(publicDir, 'icon-192.svg'), standardSvg);
+fs.writeFileSync(path.join(publicDir, 'icon-maskable-512.svg'), maskableSvg);
+
+function renderSvg(svgStr, size, outPath) {
+  const resvg = new Resvg(svgStr, {
+    fitTo: { mode: 'width', value: size }
+  });
+  const pngData = resvg.render();
+  fs.writeFileSync(outPath, pngData.asPng());
+  console.log(`Rendered ${path.basename(outPath)} (${size}x${size})`);
+}
+
+renderSvg(standardSvg, 512, path.join(publicDir, 'icon-512.png'));
+renderSvg(standardSvg, 192, path.join(publicDir, 'icon-192.png'));
+renderSvg(standardSvg, 180, path.join(publicDir, 'apple-touch-icon.png'));
+renderSvg(standardSvg, 64, path.join(publicDir, 'favicon-64.png'));
+renderSvg(standardSvg, 32, path.join(publicDir, 'favicon-32.png'));
+renderSvg(maskableSvg, 512, path.join(publicDir, 'icon-maskable-512.png'));
+renderSvg(maskableSvg, 192, path.join(publicDir, 'icon-maskable-192.png'));
+
+console.log('All SPCC Bulk PWA icons generated successfully.');

@@ -1,0 +1,49 @@
+{
+  "id": "/bulk/",
+  "name": "SPCC Tahama — Bulk Cement Loading | أسمنت تهامة - السائب",
+  "short_name": "SPCC Bulk",
+  "description": "Bulk Truck Entry, Dual QR Scanner & Silo Loading Management System - Southern Province Cement Co., Tahama Plant",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#171614",
+  "theme_color": "#D97706",
+  "categories": ["business", "productivity", "utilities"],
+  "icons": [
+    {
+      "src": "./icon-192.png",
+      "type": "image/png",
+      "sizes": "192x192",
+      "purpose": "any"
+    },
+    {
+      "src": "./icon-512.png",
+      "type": "image/png",
+      "sizes": "512x512",
+      "purpose": "any"
+    },
+    {
+      "src": "./icon-maskable-192.png",
+      "type": "image/png",
+      "sizes": "192x192",
+      "purpose": "maskable"
+    },
+    {
+      "src": "./icon-maskable-512.png",
+      "type": "image/png",
+      "sizes": "512x512",
+      "purpose": "maskable"
+    },
+    {
+      "src": "./icon-192.svg",
+      "type": "image/svg+xml",
+      "sizes": "192x192"
+    },
+    {
+      "src": "./icon-512.svg",
+      "type": "image/svg+xml",
+      "sizes": "512x512"
+    }
+  ]
+}

@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    <meta name="theme-color" content="#D97706" />
+    <meta name="description" content="SPCC Tahama Bulk Cement Loading & Silo Management System" />
+    
+    <!-- PWA Web App Manifest -->
+    <link rel="manifest" href="./manifest.json" />
+
+    <!-- Standard Favicons & App Icons -->
+    <link rel="icon" type="image/svg+xml" href="./icon-192.svg" />
+    <link rel="icon" type="image/png" sizes="32x32" href="./favicon-32.png" />
+    <link rel="icon" type="image/png" sizes="192x192" href="./icon-192.png" />
+    
+    <!-- Apple iOS Safari Web App tags -->
+    <link rel="apple-touch-icon" sizes="180x180" href="./apple-touch-icon.png" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="SPCC Bulk" />
+    
+    <!-- Android / Chrome / Windows tags -->
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="application-name" content="SPCC Bulk Loading" />
+    <meta name="msapplication-TileColor" content="#D97706" />
+
+    <title>SPCC Tahama — Bulk Cement Loading | أسمنت تهامة - السائب</title>
+
+    <!-- Prevent Theme Flash -->
+    <script>
+      (function() {
+        try {
+          var saved = localStorage.getItem('spcc_bulk_theme');
+          var theme = (saved === 'light' || saved === 'dark')
+            ? saved
+            : (window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
+          if (theme === 'light') {
+            document.documentElement.classList.add('light');
+            document.documentElement.classList.remove('dark');
+          } else {
+            document.documentElement.classList.add('dark');
+            document.documentElement.classList.remove('light');
+          }
+        } catch (e) {}
+      })();
+    </script>
+
+    <!-- Early PWA Install Prompt Interceptor -->
+    <script>
+      window.__PWA_PROMPT__ = null;
+      window.addEventListener('beforeinstallprompt', function(e) {
+        e.preventDefault();
+        window.__PWA_PROMPT__ = e;
+        try {
+          window.dispatchEvent(new CustomEvent('pwa-prompt-available', { detail: e }));
+        } catch (_) {}
+      });
+      window.addEventListener('appinstalled', function() {
+        window.__PWA_PROMPT__ = null;
+      });
+    </script>
+  </head>
+  <body class="bg-slate-950 text-slate-100 min-h-screen font-sans antialiased selection:bg-amber-500 selection:text-slate-950">
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
