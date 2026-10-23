@@ -207,11 +207,76 @@ const BulkAppContent: React.FC = () => {
   );
 };
 
+interface ErrorBoundaryProps {
+  children: React.ReactNode;
+}
+
+interface ErrorBoundaryState {
+  hasError: boolean;
+  error: any;
+}
+
+class BulkErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundaryState> {
+  constructor(props: ErrorBoundaryProps) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+
+  static getDerivedStateFromError(error: any): ErrorBoundaryState {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error: any, errorInfo: any) {
+    console.error('SPCC Bulk App Error caught by boundary:', error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="min-h-screen bg-slate-950 text-slate-100 flex items-center justify-center p-4 font-sans">
+          <div className="max-w-md w-full bg-slate-900 border border-red-500/40 rounded-3xl p-6 shadow-2xl text-center space-y-4">
+            <div className="w-14 h-14 bg-red-950/80 border border-red-500/50 rounded-2xl flex items-center justify-center mx-auto text-red-400">
+              <AlertTriangle className="w-7 h-7" />
+            </div>
+            <div>
+              <h2 className="text-base font-black text-slate-100">Application Recovered from Error</h2>
+              <p className="text-xs text-slate-400 mt-1">
+                A temporary error occurred while rendering the interface.
+              </p>
+            </div>
+            <div className="text-[11px] text-slate-300 font-mono bg-slate-950 p-3 rounded-xl border border-slate-800 text-left overflow-x-auto max-h-32">
+              {String(this.state.error?.message || this.state.error || 'Unknown error')}
+            </div>
+            <div className="flex gap-2 justify-center pt-2">
+              <button
+                type="button"
+                onClick={() => {
+                  try {
+                    localStorage.removeItem('spcc_bulk_user');
+                    localStorage.removeItem('spcc_bulk_operators_cache');
+                  } catch {}
+                  window.location.reload();
+                }}
+                className="bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs px-4 py-2.5 rounded-xl cursor-pointer transition active:scale-95 shadow-md"
+              >
+                Reset Cache & Reload App
+              </button>
+            </div>
+          </div>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
 export const App: React.FC = () => {
   return (
-    <BulkAppProvider>
-      <BulkAppContent />
-    </BulkAppProvider>
+    <BulkErrorBoundary>
+      <BulkAppProvider>
+        <BulkAppContent />
+      </BulkAppProvider>
+    </BulkErrorBoundary>
   );
 };
 

@@ -64,7 +64,11 @@ export const BulkWorkflowView: React.FC = () => {
   // Find user's active jobs or any ongoing active jobs
   const activeSiloIds = Object.keys(activeJobs) as BulkSiloId[];
   const userActiveSiloId = activeSiloIds.find(
-    sId => activeJobs[sId]?.operator.toLowerCase() === currentUser.name.toLowerCase()
+    sId => {
+      const jobOp = String(activeJobs[sId]?.operator || '').toLowerCase();
+      const userOp = String(currentUser?.name || '').toLowerCase();
+      return jobOp && userOp && jobOp === userOp;
+    }
   ) || activeSiloIds[0] || null;
 
   const currentActiveJob = userActiveSiloId ? activeJobs[userActiveSiloId] : null;
@@ -135,7 +139,7 @@ export const BulkWorkflowView: React.FC = () => {
               </h2>
             </div>
             <span className="text-xs font-mono font-bold bg-amber-950 text-amber-300 px-2.5 py-1 rounded-xl border border-amber-800">
-              {BULK_SILOS[currentActiveJob.siloId].nameEn} · {BULK_SILOS[currentActiveJob.siloId].defaultStation}
+              {BULK_SILOS[currentActiveJob.siloId]?.nameEn || currentActiveJob.siloId} · {BULK_SILOS[currentActiveJob.siloId]?.defaultStation || 'Bay'}
             </span>
           </div>
 
@@ -438,7 +442,7 @@ export const BulkWorkflowView: React.FC = () => {
             >
               <Play className="w-5 h-5 fill-slate-950" />
               <span>
-                {selectedSiloId
+                {selectedSiloId && BULK_SILOS[selectedSiloId]
                   ? language === 'ar'
                     ? `بدء التحميل من ${BULK_SILOS[selectedSiloId].nameAr}`
                     : `Start Loading at ${BULK_SILOS[selectedSiloId].nameEn}`

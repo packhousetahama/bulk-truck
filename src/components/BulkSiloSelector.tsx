@@ -75,8 +75,9 @@ export const BulkSiloSelector: React.FC<BulkSiloSelectorProps> = ({
 
           // Calculate active job elapsed time
           let elapsedSec = 0;
-          if (activeJob) {
-            elapsedSec = Math.max(0, Math.floor((activeNowMs - activeJob.startEpochMs) / 1000));
+          if (activeJob && activeJob.startEpochMs) {
+            const diff = Math.floor((activeNowMs - activeJob.startEpochMs) / 1000);
+            elapsedSec = isNaN(diff) || diff < 0 ? 0 : diff;
           }
 
           const isDisabled = (!isCompatible && !showAllOverride) || isOccupied;
@@ -144,7 +145,7 @@ export const BulkSiloSelector: React.FC<BulkSiloSelectorProps> = ({
                       </div>
                     ) : (
                       <div className="text-[11px] text-slate-400">
-                        {language === 'ar' ? 'المشغل:' : 'Operator:'} {activeJob.operator}
+                        {language === 'ar' ? 'المشغل:' : 'Operator:'} {activeJob?.operator || 'Operator'}
                       </div>
                     )}
                   </div>
