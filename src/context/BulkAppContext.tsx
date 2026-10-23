@@ -223,6 +223,23 @@ export const BulkAppProvider: React.FC<{ children: React.ReactNode }> = ({ child
     } catch {}
   };
 
+  // Synchronize theme to document element
+  useEffect(() => {
+    if (theme === 'light') {
+      document.documentElement.classList.add('light');
+      document.documentElement.classList.remove('dark');
+    } else {
+      document.documentElement.classList.add('dark');
+      document.documentElement.classList.remove('light');
+    }
+  }, [theme]);
+
+  // Synchronize language dir
+  useEffect(() => {
+    document.documentElement.dir = language === 'ar' ? 'rtl' : 'ltr';
+    document.documentElement.lang = language;
+  }, [language]);
+
   // Live timer tick every 1000ms
   useEffect(() => {
     const timer = setInterval(() => {

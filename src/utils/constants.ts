@@ -84,14 +84,15 @@ export const BULK_STOPPAGE_REASONS: StoppageReasonOption[] = [
   { id: 'OTHER', en: 'Other Technical Stoppage', ar: 'سبب فني آخر', category: 'OPERATIONAL' }
 ];
 
+export const BULK_SHEET_URL =
+  'https://docs.google.com/spreadsheets/d/13WBpFJEtwXWu7bpet_4QTsqOn3DUaA9Ls9lXQ3YUW_Q/edit?gid=919326575';
+
 export const DEFAULT_OPERATORS = [
-  { name: 'Admin', role: 'admin' as const },
-  { name: 'Hussein', role: 'user' as const },
-  { name: 'Hassani', role: 'user' as const },
-  { name: 'Basha', role: 'user' as const },
-  { name: 'Iqbal', role: 'user' as const },
-  { name: 'Operator 1', role: 'user' as const },
-  { name: 'Operator 2', role: 'user' as const },
-  { name: 'Operator 3', role: 'user' as const },
-  { name: 'Operator 4', role: 'user' as const }
+  { id: 'admin', name: 'Admin', role: 'admin' as const },
+  { id: 'ali_garni', name: 'Ali Garni', role: 'user' as const },
+  { id: 'gulam_rabani', name: 'Gulam Rabani', role: 'user' as const },
+  { id: 'siddiq_shari', name: 'Siddiq Shari', role: 'user' as const },
+  { id: 'siddiq_ansari', name: 'Siddiq Ansari', role: 'user' as const },
+  { id: 'ahmed_nasir', name: 'Ahmed Nasir', role: 'user' as const },
+  { id: 'ali_arthi', name: 'Ali Arthi', role: 'user' as const }
 ];
