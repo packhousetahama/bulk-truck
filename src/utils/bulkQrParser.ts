@@ -54,6 +54,16 @@ function parseVariant1Pipe(raw: string): ParseResult {
   const driverName = parts[4] || '';
   const driverPhone = parts[5] || '';
   const vehicleNumber = parts[6] || '';
+  let driverId = parts[7] || '';
+  if (!driverId) {
+    for (let k = 4; k < parts.length; k++) {
+      const d = (parts[k] || '').replace(/\D/g, '');
+      if (d.length === 10 && (d.startsWith('1') || d.startsWith('2'))) {
+        driverId = d;
+        break;
+      }
+    }
+  }
 
   // Check if bagged ticket was scanned
   if (BAGGED_CEMENT_CODES[rawMaterialCode.toUpperCase()]) {
@@ -75,6 +85,7 @@ function parseVariant1Pipe(raw: string): ParseResult {
     authorisedTonnes: tonnes,
     driverName,
     driverPhone,
+    driverId: driverId || undefined,
     rawPayload: raw
   };
 
@@ -154,14 +165,20 @@ function resolveCementType(codeOrName: string): CementType {
  * Old Silo 1 = GU, Old Silo 2 = PPC.
  */
 function applyTicketConflictCheck(ticket: BulkTicketData) {
-  if (ticket.cementType === 'PPC' && (ticket.printedSiloRef === '1' || ticket.printedSiloRef?.includes('1'))) {
-    ticket.conflictDetected = true;
-    ticket.conflictReason =
-      'Ticket references Silo 1, but Tahama plant mapping designates Old Silo 1 for GU only. PPC loads must route to Old Silo 2.';
+  if (ticket.cementType === 'PPC') {
+    if (ticket.printedSiloRef === '1' || ticket.printedSiloRef?.includes('1')) {
+      ticket.conflictDetected = true;
+      ticket.conflictReason =
+        'Ticket references Silo 1, but Tahama plant mapping designates Old Silo 1 for GU only. PPC loads must route to Old Silo 2.';
+    }
     ticket.proposedSiloId = 'OLD_2';
-  } else if (ticket.cementType === 'OPC' && ticket.printedSiloRef === '6') {
-    ticket.proposedSiloId = 'NEW_6';
-  } else if (ticket.cementType === 'OPC' && ticket.printedSiloRef === '5') {
-    ticket.proposedSiloId = 'NEW_5';
+  } else if (ticket.cementType === 'GU') {
+    ticket.proposedSiloId = 'OLD_1';
+  } else if (ticket.cementType === 'OPC') {
+    if (ticket.printedSiloRef === '6') {
+      ticket.proposedSiloId = 'NEW_6';
+    } else {
+      ticket.proposedSiloId = 'NEW_5';
+    }
   }
 }

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useBulkApp } from '../context/BulkAppContext';
-import { BulkSiloId, BulkTicketData } from '../types';
+import { BulkSiloId, BulkTicketData, CementType, BulkEntry } from '../types';
 import { BULK_SILOS } from '../utils/constants';
 import { BulkSiloSelector } from './BulkSiloSelector';
 import { BulkQRScannerModal } from './BulkQRScannerModal';
@@ -23,7 +23,8 @@ import {
   ShieldCheck,
   XCircle,
   HelpCircle,
-  AlertCircle
+  AlertCircle,
+  Ban
 } from 'lucide-react';
 
 export const BulkWorkflowView: React.FC = () => {
@@ -31,6 +32,7 @@ export const BulkWorkflowView: React.FC = () => {
     currentUser,
     activeJobs,
     activeNowMs,
+    recentEntries,
     startJob,
     reportStoppage,
     resolveStoppage,
@@ -59,7 +61,10 @@ export const BulkWorkflowView: React.FC = () => {
   const [manualPlate, setManualPlate] = useState('');
   const [manualReceipt, setManualReceipt] = useState('');
   const [manualTonnes, setManualTonnes] = useState('30');
-  const [manualCement, setManualCement] = useState<'OPC' | 'GU' | 'PPC'>('OPC');
+  const [manualCement, setManualCement] = useState<CementType>('OPC');
+  const [manualDriverName, setManualDriverName] = useState('');
+  const [manualDriverPhone, setManualDriverPhone] = useState('');
+  const [manualDriverId, setManualDriverId] = useState('');
 
   // Find user's active jobs or any ongoing active jobs
   const activeSiloIds = Object.keys(activeJobs) as BulkSiloId[];
@@ -72,6 +77,22 @@ export const BulkWorkflowView: React.FC = () => {
   ) || activeSiloIds[0] || null;
 
   const currentActiveJob = userActiveSiloId ? activeJobs[userActiveSiloId] : null;
+
+  // Duplicate Check against active jobs and recorded entries
+  const currentReceiptNormalized = (pendingTicket?.receiptNumber || manualReceipt || '').trim().toUpperCase();
+  const duplicateActive = currentReceiptNormalized
+    ? Object.values(activeJobs).find(
+        j => j && j.receiptNumber.trim().toUpperCase() === currentReceiptNormalized
+      )
+    : undefined;
+
+  const duplicateRecorded = currentReceiptNormalized
+    ? (recentEntries || []).find(
+        (e: BulkEntry) => e && String(e.receiptNumber || '').trim().toUpperCase() === currentReceiptNormalized
+      )
+    : undefined;
+
+  const isDuplicateReceipt = !!(duplicateActive || duplicateRecorded);
 
   const handleScanSuccess = (res: any) => {
     setIsScannerOpen(false);
@@ -108,14 +129,30 @@ export const BulkWorkflowView: React.FC = () => {
       receiptNumber: manualReceipt.trim().toUpperCase(),
       vehicleNumber: manualPlate.trim().toUpperCase(),
       cementType: manualCement,
-      authorisedTonnes: parseFloat(manualTonnes) || 30
+      authorisedTonnes: parseFloat(manualTonnes) || 30,
+      driverName: manualDriverName.trim() || undefined,
+      driverPhone: manualDriverPhone.trim() || undefined,
+      driverId: manualDriverId.trim() || undefined
     };
+
+    // Auto propose silo based on cement
+    if (manualCement === 'PPC') ticket.proposedSiloId = 'OLD_2';
+    else if (manualCement === 'GU') ticket.proposedSiloId = 'OLD_1';
+    else ticket.proposedSiloId = 'NEW_5';
+
     setPendingTicket(ticket);
+    setSelectedSiloId(ticket.proposedSiloId);
     setShowManualInputs(false);
   };
 
   const handleStartLoading = async () => {
     if (!pendingTicket || !selectedSiloId) return;
+
+    if (isDuplicateReceipt && currentUser.role !== 'admin') {
+      showToast('Duplicate load blocked: Receipt already recorded or active.', 'error');
+      return;
+    }
+
     const ok = await startJob(selectedSiloId, pendingTicket, conflictResolutionNote);
     if (ok) {
       setPendingTicket(null);
@@ -198,6 +235,15 @@ export const BulkWorkflowView: React.FC = () => {
                 {currentActiveJob.cementType} · {currentActiveJob.authorisedTonnes} t
               </span>
             </div>
+
+            {/* Driver Details in Active HUD */}
+            {currentActiveJob.driverName && (
+              <div className="bg-slate-950 p-2.5 rounded-xl border border-slate-800 col-span-2 sm:col-span-3 flex items-center justify-between text-[11px] text-slate-300">
+                <span className="text-slate-400">Driver: <strong className="text-white">{currentActiveJob.driverName}</strong></span>
+                {currentActiveJob.driverPhone && <span className="font-mono text-slate-400">{currentActiveJob.driverPhone}</span>}
+                {currentActiveJob.driverId && <span className="font-mono text-amber-400/80">ID: {currentActiveJob.driverId}</span>}
+              </div>
+            )}
           </div>
 
           {/* Action Buttons for Active Load */}
@@ -207,7 +253,7 @@ export const BulkWorkflowView: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => resolveStoppage(currentActiveJob.siloId)}
-                  className="py-3 px-4 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs transition shadow-lg active:scale-95 flex items-center justify-center gap-2"
+                  className="py-3 px-4 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs transition shadow-lg active:scale-95 flex items-center justify-center gap-2 cursor-pointer"
                 >
                   <Play className="w-4 h-4 fill-white" />
                   <span>{language === 'ar' ? 'استئناف التحميل' : 'Resume Loading'}</span>
@@ -219,7 +265,7 @@ export const BulkWorkflowView: React.FC = () => {
                     setSelectedActiveSiloId(currentActiveJob.siloId);
                     setIsStoppageModalOpen(true);
                   }}
-                  className="py-3 px-4 rounded-2xl bg-red-600/20 hover:bg-red-600/30 border border-red-500/50 text-red-300 font-bold text-xs transition active:scale-95 flex items-center justify-center gap-2"
+                  className="py-3 px-4 rounded-2xl bg-red-600/20 hover:bg-red-600/30 border border-red-500/50 text-red-300 font-bold text-xs transition active:scale-95 flex items-center justify-center gap-2 cursor-pointer"
                 >
                   <AlertTriangle className="w-4 h-4 text-red-400" />
                   <span>{language === 'ar' ? 'تسجيل عطل' : 'Report Delay'}</span>
@@ -232,7 +278,7 @@ export const BulkWorkflowView: React.FC = () => {
                   setSelectedActiveSiloId(currentActiveJob.siloId);
                   setIsCompleteModalOpen(true);
                 }}
-                className="py-3 px-4 rounded-2xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs transition shadow-lg shadow-amber-500/20 active:scale-95 flex items-center justify-center gap-2"
+                className="py-3 px-4 rounded-2xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs transition shadow-lg shadow-amber-500/20 active:scale-95 flex items-center justify-center gap-2 cursor-pointer"
               >
                 <CheckCircle2 className="w-4 h-4" />
                 <span>{language === 'ar' ? 'إتمام التحميل' : 'Complete & Weigh-Out'}</span>
@@ -267,11 +313,11 @@ export const BulkWorkflowView: React.FC = () => {
             <p className="text-xs text-slate-400 max-w-sm mx-auto">
               {language === 'ar'
                 ? 'امسح رمز التذكرة QR مباشرة عبر الكاميرا للتعرف الفوري على بيانات الشاحنة والصومعة.'
-                : 'Scan dispatch ticket QR code to instantly verify vehicle, material, and compatible silo.'}
+                : 'Scan dispatch ticket QR code to verify vehicle, material, and compatible silo.'}
             </p>
           </div>
 
-          {/* Big Friendly Scan Button */}
+          {/* Big Friendly Scan Button matching Truck-Entry */}
           <button
             type="button"
             onClick={() => setIsScannerOpen(true)}
@@ -296,7 +342,7 @@ export const BulkWorkflowView: React.FC = () => {
                 <div className="grid grid-cols-2 gap-3 text-xs">
                   <div>
                     <label className="text-[11px] font-bold text-slate-400 block mb-1">
-                      {language === 'ar' ? 'رقم اللوحة' : 'Truck License Plate'}
+                      {language === 'ar' ? 'رقم اللوحة' : 'Truck License Plate'} *
                     </label>
                     <input
                       type="text"
@@ -310,7 +356,7 @@ export const BulkWorkflowView: React.FC = () => {
 
                   <div>
                     <label className="text-[11px] font-bold text-slate-400 block mb-1">
-                      {language === 'ar' ? 'رقم الإيصال' : 'Dispatch Receipt #'}
+                      {language === 'ar' ? 'رقم الإيصال' : 'Dispatch Receipt #'} *
                     </label>
                     <input
                       type="text"
@@ -353,9 +399,42 @@ export const BulkWorkflowView: React.FC = () => {
                   </div>
                 </div>
 
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+                  <div>
+                    <label className="text-[11px] font-bold text-slate-400 block mb-1">Driver Name</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. Iqbal"
+                      value={manualDriverName}
+                      onChange={e => setManualDriverName(e.target.value)}
+                      className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-100 font-mono focus:outline-none focus:ring-2 focus:ring-amber-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[11px] font-bold text-slate-400 block mb-1">Driver Phone</label>
+                    <input
+                      type="text"
+                      placeholder="+966..."
+                      value={manualDriverPhone}
+                      onChange={e => setManualDriverPhone(e.target.value)}
+                      className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-100 font-mono focus:outline-none focus:ring-2 focus:ring-amber-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[11px] font-bold text-slate-400 block mb-1">Driver Iqama / ID</label>
+                    <input
+                      type="text"
+                      placeholder="10-digit ID"
+                      value={manualDriverId}
+                      onChange={e => setManualDriverId(e.target.value)}
+                      className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-100 font-mono focus:outline-none focus:ring-2 focus:ring-amber-500"
+                    />
+                  </div>
+                </div>
+
                 <button
                   type="submit"
-                  className="w-full py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs transition active:scale-95"
+                  className="w-full py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs transition active:scale-95 cursor-pointer"
                 >
                   {language === 'ar' ? 'متابعة لاختيار الصومعة' : 'Proceed to Silo Selection'}
                 </button>
@@ -365,7 +444,7 @@ export const BulkWorkflowView: React.FC = () => {
         </div>
       )}
 
-      {/* 3. TICKET REVIEW & SILO SELECTION */}
+      {/* 3. TICKET REVIEW & EDITABLE BOXES (Matching Truck-Entry design) */}
       {pendingTicket && (
         <div className="bg-slate-900 border border-slate-800 rounded-3xl p-5 shadow-2xl space-y-4">
           <div className="flex items-center justify-between border-b border-slate-800 pb-3">
@@ -373,8 +452,8 @@ export const BulkWorkflowView: React.FC = () => {
               <span className="text-[10px] font-black uppercase text-amber-400 tracking-wider">
                 {language === 'ar' ? 'مراجعة بيانات التذكرة' : 'Ticket Details Verified'}
               </span>
-              <h2 className="text-base font-black text-slate-100">
-                {pendingTicket.vehicleNumber}
+              <h2 className="text-base font-black text-slate-100 font-mono">
+                {pendingTicket.vehicleNumber || 'NEW TRUCK'}
               </h2>
             </div>
             <button
@@ -384,34 +463,222 @@ export const BulkWorkflowView: React.FC = () => {
                 setSelectedSiloId(null);
                 setConflictResolutionNote(undefined);
               }}
-              className="text-xs text-slate-400 hover:text-white underline"
+              className="text-xs text-slate-400 hover:text-white underline cursor-pointer"
             >
               {language === 'ar' ? 'إلغاء والمسح مجدداً' : 'Clear & Rescan'}
             </button>
           </div>
 
-          {/* Ticket Specs Grid */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
-            <div className="bg-slate-950 p-2.5 rounded-xl border border-slate-800">
-              <span className="text-[10px] font-semibold text-slate-400 block">Receipt</span>
-              <span className="font-mono font-bold text-slate-100">{pendingTicket.receiptNumber}</span>
+          {/* DUPLICATE RECEIPT WARNING BANNER (Matching Truck-Entry Ban Banner) */}
+          {isDuplicateReceipt && (
+            <div className="p-4 rounded-2xl bg-red-950/80 border-2 border-red-500/80 flex items-start gap-3 text-xs text-red-200 shadow-xl shadow-red-950/50 animate-in fade-in">
+              <div className="p-2 rounded-xl bg-red-900/80 text-red-300 shrink-0 mt-0.5">
+                <Ban className="w-5 h-5" />
+              </div>
+              <div className="space-y-1.5 flex-1">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="font-black text-sm text-red-100 tracking-wide">
+                    {language === 'ar' ? 'تذكرة مكررة - تم تسجيل هذا الإيصال' : 'Duplicate Dispatch Receipt Detected'}
+                  </span>
+                  <span className="px-2 py-0.5 text-[10px] font-bold rounded-full bg-red-500/20 text-red-300 border border-red-500/40">
+                    {duplicateActive ? 'Currently Loading' : 'Recorded in Google Sheets'}
+                  </span>
+                </div>
+                <p className="text-xs text-red-200/90 leading-relaxed">
+                  Receipt <strong className="font-mono text-red-100 font-bold">#{pendingTicket.receiptNumber}</strong>
+                  {duplicateRecorded
+                    ? ` has already been recorded in Google Sheets on ${duplicateRecorded.date} by ${duplicateRecorded.operator} (${duplicateRecorded.siloName}).`
+                    : duplicateActive
+                    ? ` is currently actively loading on ${duplicateActive.siloId} by ${duplicateActive.operator}.`
+                    : ' is a duplicate.'}
+                </p>
+                {currentUser?.role === 'admin' && (
+                  <p className="text-[11px] text-amber-300/90 pt-1">
+                    * Admin Privilege: You may review or modify parameters and proceed if this is an authorized re-dispatch.
+                  </p>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* EXTRACTED DETAILS CARD - EXACT TRUCK ENTRY BOXES */}
+          <div className="p-4 rounded-2xl bg-slate-950/80 border border-slate-800 space-y-3.5 shadow-lg">
+            {/* Header with Receipt and Clickable Cement Selector */}
+            <div className="flex items-center justify-between text-xs border-b border-slate-800/80 pb-2.5 flex-wrap gap-2">
+              <div className="flex items-center gap-1.5">
+                <span className="text-slate-400 font-medium">Scanned Receipt:</span>
+                <span className="font-mono font-bold text-amber-400">#{pendingTicket.receiptNumber}</span>
+                <span className="text-[10px] font-mono text-emerald-400 flex items-center gap-1 ml-1 bg-emerald-950/60 px-1.5 py-0.5 rounded border border-emerald-800/60">
+                  <CheckCircle2 className="w-3 h-3" />
+                  <span>Verified</span>
+                </span>
+              </div>
+              {/* Clickable Cement Type Selector Pills */}
+              <div className="flex items-center gap-1.5">
+                {(['OPC', 'GU', 'PPC'] as CementType[]).map(lbl => {
+                  const isSel = pendingTicket.cementType === lbl;
+                  return (
+                    <button
+                      key={lbl}
+                      type="button"
+                      onClick={() => {
+                        setPendingTicket(prev => prev ? { ...prev, cementType: lbl } : null);
+                        if (lbl === 'PPC') setSelectedSiloId('OLD_2');
+                        else if (lbl === 'GU') setSelectedSiloId('OLD_1');
+                        else setSelectedSiloId('NEW_5');
+                      }}
+                      className={`text-[10px] font-black px-2.5 py-1 rounded-full border transition-all cursor-pointer ${
+                        isSel
+                          ? lbl === 'OPC'
+                            ? 'bg-blue-600 text-white border-blue-400 shadow-md shadow-blue-500/30'
+                            : lbl === 'GU'
+                            ? 'bg-emerald-600 text-white border-emerald-400 shadow-md shadow-emerald-500/30'
+                            : 'bg-amber-600 text-white border-amber-400 shadow-md shadow-amber-500/30'
+                          : 'bg-slate-900 text-slate-400 border-slate-800 hover:text-slate-200'
+                      }`}
+                    >
+                      {lbl}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
 
-            <div className="bg-slate-950 p-2.5 rounded-xl border border-slate-800">
-              <span className="text-[10px] font-semibold text-slate-400 block">Cement</span>
-              <span className="font-bold text-amber-400">{pendingTicket.cementType}</span>
-            </div>
-
-            <div className="bg-slate-950 p-2.5 rounded-xl border border-slate-800">
-              <span className="text-[10px] font-semibold text-slate-400 block">Authorised</span>
-              <span className="font-mono font-bold text-slate-100">{pendingTicket.authorisedTonnes} t</span>
-            </div>
-
-            <div className="bg-slate-950 p-2.5 rounded-xl border border-slate-800">
-              <span className="text-[10px] font-semibold text-slate-400 block">Format</span>
-              <span className="font-mono text-[11px] text-slate-300">
-                {pendingTicket.variant === 'VARIANT_1_PIPE' ? 'Variant 1 (Pipe)' : pendingTicket.variant === 'VARIANT_2_JSON' ? 'Variant 2 (JSON)' : 'Manual'}
+            {/* Cement Type Summary Callout */}
+            <div className="p-2.5 rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-between">
+              <div>
+                <span className="text-[10px] text-slate-400 block uppercase font-semibold">
+                  {language === 'ar' ? 'نوع الإسمنت السائب' : 'Bulk Material Description'}
+                </span>
+                <span className="text-xs font-bold text-slate-100">
+                  {pendingTicket.cementType === 'OPC'
+                    ? 'Ordinary Portland Cement (OPC) · Bulk'
+                    : pendingTicket.cementType === 'PPC'
+                    ? 'Portland Pozzolana Cement (PPC) · Bulk'
+                    : 'General Use / Resistant Cement (GU) · Bulk'}
+                </span>
+              </div>
+              <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-slate-800 text-amber-300 border border-slate-700">
+                Bulk Silo Loading
               </span>
+            </div>
+
+            {/* Editable Fields Grid (2 Columns, matching Truck Entry form boxes) */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+              {/* Vehicle Number (Editable) */}
+              <div>
+                <label className="text-[10px] uppercase font-bold text-slate-300 flex items-center gap-1 mb-1">
+                  <span>{language === 'ar' ? 'رقم الشاحنة / اللوحة' : 'Vehicle / Plate Number'}</span>
+                  <span className="text-amber-400">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={pendingTicket.vehicleNumber}
+                  onChange={e => setPendingTicket(prev => prev ? { ...prev, vehicleNumber: e.target.value.toUpperCase() } : null)}
+                  placeholder="e.g. 4093-ASA"
+                  className="w-full bg-slate-900 border border-slate-700 focus:border-amber-500 focus:ring-1 focus:ring-amber-500 rounded-xl px-3 py-2 text-xs font-mono font-bold text-slate-100 placeholder-slate-600 focus:outline-none transition-colors"
+                />
+              </div>
+
+              {/* Receipt Number (Editable) */}
+              <div>
+                <label className="text-[10px] uppercase font-bold text-slate-300 flex items-center gap-1 mb-1">
+                  <span>{language === 'ar' ? 'رقم الإيصال / الشحنة' : 'Receipt / Dispatch #'}</span>
+                  <span className="text-amber-400">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={pendingTicket.receiptNumber}
+                  onChange={e => setPendingTicket(prev => prev ? { ...prev, receiptNumber: e.target.value.toUpperCase() } : null)}
+                  placeholder="e.g. 6L9JMQ"
+                  className="w-full bg-slate-900 border border-slate-700 focus:border-amber-500 focus:ring-1 focus:ring-amber-500 rounded-xl px-3 py-2 text-xs font-mono font-bold text-slate-100 placeholder-slate-600 focus:outline-none transition-colors"
+                />
+              </div>
+
+              {/* Authorised Tonnes (Editable) */}
+              <div>
+                <label className="text-[10px] uppercase font-bold text-slate-300 flex items-center gap-1 mb-1">
+                  <span>{language === 'ar' ? 'الكمية المصرح بها (طن)' : 'Authorised Tonnes'}</span>
+                  <span className="text-amber-400">*</span>
+                </label>
+                <input
+                  type="number"
+                  step="0.5"
+                  value={pendingTicket.authorisedTonnes || ''}
+                  onChange={e => setPendingTicket(prev => prev ? { ...prev, authorisedTonnes: parseFloat(e.target.value) || 0 } : null)}
+                  placeholder="30"
+                  className="w-full bg-slate-900 border border-slate-700 focus:border-amber-500 focus:ring-1 focus:ring-amber-500 rounded-xl px-3 py-2 text-xs font-mono font-bold text-slate-100 placeholder-slate-600 focus:outline-none transition-colors"
+                />
+              </div>
+
+              {/* Ticket Silo Reference (Editable) */}
+              <div>
+                <label className="text-[10px] uppercase font-bold text-slate-300 flex items-center gap-1 mb-1">
+                  <span>{language === 'ar' ? 'الصومعة المطبوعة بالتذكرة' : 'Ticket Silo Reference'}</span>
+                </label>
+                <input
+                  type="text"
+                  value={pendingTicket.printedSiloRef || ''}
+                  onChange={e => setPendingTicket(prev => prev ? { ...prev, printedSiloRef: e.target.value } : null)}
+                  placeholder="e.g. Tahama-Silo 6"
+                  className="w-full bg-slate-900 border border-slate-700 focus:border-amber-500 focus:ring-1 focus:ring-amber-500 rounded-xl px-3 py-2 text-xs font-mono text-slate-100 placeholder-slate-600 focus:outline-none transition-colors"
+                />
+              </div>
+
+              {/* Driver Name (Editable) */}
+              <div>
+                <label className="text-[10px] uppercase font-bold text-slate-300 flex items-center gap-1 mb-1">
+                  <span>{language === 'ar' ? 'اسم السائق' : 'Driver Name'}</span>
+                </label>
+                <input
+                  type="text"
+                  value={pendingTicket.driverName || ''}
+                  onChange={e => setPendingTicket(prev => prev ? { ...prev, driverName: e.target.value } : null)}
+                  placeholder="e.g. Iqbal"
+                  className="w-full bg-slate-900 border border-slate-700 focus:border-amber-500 focus:ring-1 focus:ring-amber-500 rounded-xl px-3 py-2 text-xs font-medium text-slate-100 placeholder-slate-600 focus:outline-none transition-colors"
+                />
+              </div>
+
+              {/* Driver Phone (Editable) */}
+              <div>
+                <label className="text-[10px] uppercase font-bold text-slate-300 flex items-center gap-1 mb-1">
+                  <span>{language === 'ar' ? 'رقم هاتف السائق' : 'Driver Phone'}</span>
+                </label>
+                <input
+                  type="text"
+                  value={pendingTicket.driverPhone || ''}
+                  onChange={e => setPendingTicket(prev => prev ? { ...prev, driverPhone: e.target.value } : null)}
+                  placeholder="+966..."
+                  className="w-full bg-slate-900 border border-slate-700 focus:border-amber-500 focus:ring-1 focus:ring-amber-500 rounded-xl px-3 py-2 text-xs font-mono text-slate-100 placeholder-slate-600 focus:outline-none transition-colors"
+                />
+              </div>
+
+              {/* Driver ID / Iqama (Editable) */}
+              <div>
+                <label className="text-[10px] uppercase font-bold text-slate-300 flex items-center gap-1 mb-1">
+                  <span>{language === 'ar' ? 'رقم الهوية / الإقامة' : 'Driver ID / Iqama'}</span>
+                </label>
+                <input
+                  type="text"
+                  value={pendingTicket.driverId || ''}
+                  onChange={e => setPendingTicket(prev => prev ? { ...prev, driverId: e.target.value } : null)}
+                  placeholder="10-digit Iqama / ID"
+                  className="w-full bg-slate-900 border border-slate-700 focus:border-amber-500 focus:ring-1 focus:ring-amber-500 rounded-xl px-3 py-2 text-xs font-mono text-slate-100 placeholder-slate-600 focus:outline-none transition-colors"
+                />
+              </div>
+
+              {/* Operator & Shift Info */}
+              <div>
+                <label className="text-[10px] uppercase font-bold text-slate-300 flex items-center gap-1 mb-1">
+                  <span>{language === 'ar' ? 'المشغل والوردية' : 'Assigned Operator & Shift'}</span>
+                </label>
+                <div className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs font-bold text-slate-300 flex items-center justify-between">
+                  <span>{currentUser?.name || 'Operator'}</span>
+                  <span className="text-[10px] font-mono bg-slate-800 text-amber-400 px-2 py-0.5 rounded">
+                    Active Session
+                  </span>
+                </div>
+              </div>
             </div>
           </div>
 
@@ -436,7 +703,7 @@ export const BulkWorkflowView: React.FC = () => {
           <div className="pt-2">
             <button
               type="button"
-              disabled={!selectedSiloId}
+              disabled={!selectedSiloId || (isDuplicateReceipt && currentUser?.role !== 'admin')}
               onClick={handleStartLoading}
               className="w-full py-4 rounded-2xl bg-amber-500 hover:bg-amber-400 disabled:opacity-40 text-slate-950 font-black text-base shadow-xl shadow-amber-500/20 active:scale-98 transition flex items-center justify-center gap-2 cursor-pointer"
             >
@@ -468,7 +735,9 @@ export const BulkWorkflowView: React.FC = () => {
         onConfirmResolution={handleConflictResolved}
         onCancel={() => {
           setIsConflictModalOpen(false);
-          setPendingTicket(null);
+          if (pendingTicket?.proposedSiloId) {
+            setSelectedSiloId(pendingTicket.proposedSiloId);
+          }
         }}
       />
 
@@ -476,25 +745,33 @@ export const BulkWorkflowView: React.FC = () => {
         <BulkStoppageModal
           isOpen={isStoppageModalOpen}
           siloId={selectedActiveSiloId}
-          onClose={() => setIsStoppageModalOpen(false)}
-          onSubmit={async (reason, comment) => {
+          onClose={() => {
             setIsStoppageModalOpen(false);
+            setSelectedActiveSiloId(null);
+          }}
+          onSubmit={async (reason, comment) => {
             await reportStoppage(selectedActiveSiloId, reason, comment);
+            setIsStoppageModalOpen(false);
+            setSelectedActiveSiloId(null);
           }}
         />
       )}
 
-      {selectedActiveSiloId && currentActiveJob && (
-        <BulkCompleteModal
-          isOpen={isCompleteModalOpen}
-          job={currentActiveJob}
-          onClose={() => setIsCompleteModalOpen(false)}
-          onConfirmComplete={async actualTonnes => {
-            setIsCompleteModalOpen(false);
+      <BulkCompleteModal
+        isOpen={isCompleteModalOpen}
+        job={selectedActiveSiloId ? activeJobs[selectedActiveSiloId] || null : null}
+        onClose={() => {
+          setIsCompleteModalOpen(false);
+          setSelectedActiveSiloId(null);
+        }}
+        onConfirmComplete={async (actualTonnes) => {
+          if (selectedActiveSiloId) {
             await completeJob(selectedActiveSiloId, actualTonnes);
-          }}
-        />
-      )}
+          }
+          setIsCompleteModalOpen(false);
+          setSelectedActiveSiloId(null);
+        }}
+      />
     </div>
   );
 };

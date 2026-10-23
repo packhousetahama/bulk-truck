@@ -21,6 +21,20 @@ export const BulkQRScannerModal: React.FC<BulkQRScannerModalProps> = ({
   const [isScanning, setIsScanning] = useState(false);
   const scannerRef = useRef<Html5Qrcode | null>(null);
   const readerId = 'bulk-qr-reader-container';
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleFileScan = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      setCameraError(null);
+      const html5QrCode = new Html5Qrcode('bulk-qr-file-dummy');
+      const decodedText = await html5QrCode.scanFile(file, true);
+      handleDecodedPayload(decodedText);
+    } catch (err: any) {
+      setCameraError('Could not read QR from selected photo. Please ensure barcode is well lit and not blurry.');
+    }
+  };
 
   // Sample payloads from verified plant tickets for instant 1-tap testing
   const sampleVariant1 = '1|6L9JMQ|FNBKPPC|30|اقبال|+966556720380|4093-ASA';
@@ -59,8 +73,8 @@ export const BulkQRScannerModal: React.FC<BulkQRScannerModalProps> = ({
         await html5QrCode.start(
           { facingMode: 'environment' },
           {
-            fps: 15,
-            qrbox: { width: 250, height: 250 }
+            fps: 20,
+            qrbox: (w, h) => { const sz = Math.floor(Math.min(w, h) * 0.85); return { width: sz, height: sz }; }
           },
           (decodedText) => {
             if (isMounted) {
@@ -159,6 +173,27 @@ export const BulkQRScannerModal: React.FC<BulkQRScannerModalProps> = ({
               <span className="text-[11px] font-bold text-amber-400/80 bg-slate-950/80 px-2 py-0.5 rounded-md">
                 {language === 'ar' ? 'ضع الرمز داخل الإطار' : 'Fit QR Inside Frame'}
               </span>
+            </div>
+
+            <div id="bulk-qr-file-dummy" className="hidden" />
+            <input
+              type="file"
+              ref={fileInputRef}
+              accept="image/*"
+              capture="environment"
+              onChange={handleFileScan}
+              className="hidden"
+            />
+
+            <div className="absolute bottom-3 right-3 z-10">
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className="px-3 py-1.5 rounded-xl bg-slate-900/90 hover:bg-slate-800 text-amber-400 border border-amber-500/40 text-[11px] font-bold flex items-center gap-1.5 shadow-lg backdrop-blur cursor-pointer"
+              >
+                <Camera className="w-3.5 h-3.5" />
+                <span>{language === 'ar' ? 'صورة من المعرض / كاميرا' : 'Choose Photo / Snap'}</span>
+              </button>
             </div>
 
             {cameraError && (

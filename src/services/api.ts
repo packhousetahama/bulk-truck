@@ -64,6 +64,10 @@ export function normalizeActiveJob(raw: any, fallbackSiloId?: BulkSiloId): BulkA
     truckNumber: String(raw.truckNumber || raw.vehicleNumber || raw.plate || 'TRUCK').trim(),
     cementType,
     authorisedTonnes: Number(raw.authorisedTonnes || raw.tons || raw.actualTonnes) || 30,
+    driverName: String(raw.driverName || raw.driver || '').trim() || undefined,
+    driverPhone: String(raw.driverPhone || raw.phone || '').trim() || undefined,
+    driverId: String(raw.driverId || '').trim() || undefined,
+    ticketSiloRef: String(raw.ticketSiloRef || raw.siloRef || '').trim() || undefined,
     startTime: String(raw.startTime || ''),
     startEpochMs: epoch,
     operator: String(raw.operator || raw.operatorName || 'Operator').trim(),
@@ -107,6 +111,10 @@ export async function startBulkLoaderRemote(params: {
   authorisedTonnes: number;
   operator: string;
   variant: BulkQRVariant;
+  driverName?: string;
+  driverPhone?: string;
+  driverId?: string;
+  ticketSiloRef?: string;
   conflictDetected?: boolean;
   conflictResolution?: string;
 }): Promise<{ success: boolean; job?: BulkActiveJob; error?: string }> {
@@ -184,6 +192,12 @@ export async function resolveBulkStoppageRemote(params: {
 export async function completeBulkLoaderRemote(params: {
   siloId: BulkSiloId;
   actualTonnes: number;
+  receiptNumber?: string;
+  loadId?: string;
+  driverName?: string;
+  driverPhone?: string;
+  driverId?: string;
+  ticketSiloRef?: string;
   grossDurationMinutes?: number;
   netDurationMinutes?: number;
   downtimeMinutes?: number;
@@ -238,7 +252,11 @@ export async function submitBulkEntry(entry: Partial<BulkEntry>): Promise<{ succ
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
       body: JSON.stringify({
         action: 'saveBulkEntry',
-        entry
+        entry: {
+          ...entry,
+          vehicleNumber: entry.truckNumber || (entry as any).vehicleNumber,
+          operatorName: entry.operator || (entry as any).operatorName
+        }
       })
     });
     const json = await res.json();

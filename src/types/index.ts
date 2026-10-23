@@ -38,6 +38,11 @@ export interface BulkActiveJob {
   truckNumber: string;
   cementType: CementType;
   authorisedTonnes: number;
+  actualTonnes?: number;
+  driverName?: string;
+  driverPhone?: string;
+  driverId?: string;
+  ticketSiloRef?: string;
   startTime: string; // "HH:MM:SS" or ISO
   startEpochMs: number;
   operator: string;

@@ -16,7 +16,8 @@ import {
   resolveBulkStoppageRemote,
   completeBulkLoaderRemote,
   cancelBulkLoaderRemote,
-  submitBulkEntry
+  submitBulkEntry,
+  fetchBulkEntries
 } from '../services/api';
 import { getSaudiCurrentDateOnly, getSaudiCurrentTimeOnly, getSaudiCurrentShift, calculateDurationMinutes } from '../utils/timeZone';
 
@@ -44,6 +45,8 @@ interface BulkAppContextType {
   toast: { message: string; type: 'success' | 'error' | 'info' | 'warning' } | null;
   showToast: (message: string, type?: 'success' | 'error' | 'info' | 'warning') => void;
   refreshActiveJobs: () => Promise<void>;
+  recentEntries: BulkEntry[];
+  refreshRecentEntries: () => Promise<void>;
   playBeep: () => void;
   playSuccess: () => void;
   t: (key: string) => string;
@@ -146,6 +149,7 @@ export const BulkAppProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const [activeTab, setActiveTab] = useState<'workflow' | 'records' | 'manager'>('workflow');
   const [activeJobs, setActiveJobs] = useState<Record<string, BulkActiveJob>>({});
   const [activeNowMs, setActiveNowMs] = useState<number>(Date.now());
+  const [recentEntries, setRecentEntries] = useState<BulkEntry[]>([]);
   const [loading, setLoading] = useState(false);
   const [isOnline, setIsOnline] = useState(navigator.onLine);
   const [lastSynced, setLastSynced] = useState<Date | null>(null);
@@ -260,6 +264,17 @@ export const BulkAppProvider: React.FC<{ children: React.ReactNode }> = ({ child
     };
   }, []);
 
+  const refreshRecentEntries = async () => {
+    try {
+      const data = await fetchBulkEntries();
+      setRecentEntries(data);
+    } catch {}
+  };
+
+  useEffect(() => {
+    refreshRecentEntries();
+  }, []);
+
   // Polling active bulk loaders
   const refreshActiveJobs = async () => {
     try {
@@ -305,6 +320,10 @@ export const BulkAppProvider: React.FC<{ children: React.ReactNode }> = ({ child
         truckNumber: ticket.vehicleNumber,
         cementType: ticket.cementType,
         authorisedTonnes: ticket.authorisedTonnes,
+        driverName: ticket.driverName,
+        driverPhone: ticket.driverPhone,
+        driverId: ticket.driverId,
+        ticketSiloRef: ticket.printedSiloRef,
         startTime: getSaudiCurrentTimeOnly(),
         startEpochMs: nowMs,
         operator: currentUser.name,
@@ -325,6 +344,10 @@ export const BulkAppProvider: React.FC<{ children: React.ReactNode }> = ({ child
         truckNumber: ticket.vehicleNumber,
         cementType: ticket.cementType,
         authorisedTonnes: ticket.authorisedTonnes,
+        driverName: ticket.driverName,
+        driverPhone: ticket.driverPhone,
+        driverId: ticket.driverId,
+        ticketSiloRef: ticket.printedSiloRef,
         operator: currentUser.name,
         variant: ticket.variant,
         conflictDetected: ticket.conflictDetected,
@@ -448,6 +471,9 @@ export const BulkAppProvider: React.FC<{ children: React.ReactNode }> = ({ child
         authorisedTonnes: job.authorisedTonnes,
         actualTonnes,
         varianceTonnes: Math.round((actualTonnes - job.authorisedTonnes) * 100) / 100,
+        driverName: job.driverName,
+        driverPhone: job.driverPhone,
+        driverId: job.driverId,
         startTime: job.startTime,
         endTime,
         grossDurationMinutes: grossMinutes,
@@ -468,6 +494,11 @@ export const BulkAppProvider: React.FC<{ children: React.ReactNode }> = ({ child
       await completeBulkLoaderRemote({
         siloId,
         actualTonnes,
+        receiptNumber: job.receiptNumber,
+        driverName: job.driverName,
+        driverPhone: job.driverPhone,
+        driverId: job.driverId,
+        ticketSiloRef: job.ticketSiloRef,
         grossDurationMinutes: grossMinutes,
         netDurationMinutes: netMinutes,
         downtimeMinutes
@@ -481,6 +512,7 @@ export const BulkAppProvider: React.FC<{ children: React.ReactNode }> = ({ child
       });
       delete graceMap.current[siloId];
 
+      refreshRecentEntries();
       playSuccess();
       showToast(`Loading complete! ${actualTonnes} tonnes dispatched for truck ${job.truckNumber}`, 'success');
       return true;
@@ -553,6 +585,8 @@ export const BulkAppProvider: React.FC<{ children: React.ReactNode }> = ({ child
         toast,
         showToast,
         refreshActiveJobs,
+        recentEntries,
+        refreshRecentEntries,
         playBeep,
         playSuccess,
         t
