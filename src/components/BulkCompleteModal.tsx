@@ -42,7 +42,7 @@ export const BulkCompleteModal: React.FC<BulkCompleteModalProps> = ({
 
   const [actualTonnes, setActualTonnes] = useState<string>(
 
-    job ? String(job.authorisedTonnes || 30) : '30'
+    job?.authorisedTonnes ? String(job.authorisedTonnes) : ''
 
   );
 
@@ -65,6 +65,22 @@ export const BulkCompleteModal: React.FC<BulkCompleteModalProps> = ({
   });
 
 
+
+    // Synchronize actual loaded tonnes with authorised tonnes and stoppage whenever modal opens or job changes
+  useEffect(() => {
+    if (job && isOpen) {
+      setActualTonnes(String(job.authorisedTonnes !== undefined && job.authorisedTonnes !== null ? job.authorisedTonnes : ''));
+      if (job.stoppageReason && job.stoppageReason !== 'NONE') {
+        const up = job.stoppageReason.toUpperCase();
+        if (up.includes('MECH')) setStoppage('MECHANICAL');
+        else if (up.includes('INST') || up.includes('ELEC')) setStoppage('INSTRUMENT');
+        else if (up.includes('PROD') || up.includes('OPER')) setStoppage('PRODUCTION');
+        else setStoppage('NONE');
+      } else {
+        setStoppage('NONE');
+      }
+    }
+  }, [isOpen, job?.receiptNumber, job?.siloId, job?.authorisedTonnes, job?.stoppageReason]);
 
   if (!isOpen || !job) return null;
 
@@ -475,21 +491,7 @@ export const BulkCompleteModal: React.FC<BulkCompleteModalProps> = ({
 
                 );
 
-  // Synchronize actual loaded tonnes with authorised tonnes whenever modal opens or job changes
-  useEffect(() => {
-    if (job && isOpen) {
-      setActualTonnes(String(job.authorisedTonnes || ''));
-      setStoppage(() => {
-        if (job.stoppageReason && job.stoppageReason !== 'NONE') {
-          const up = job.stoppageReason.toUpperCase();
-          if (up.includes('MECH')) return 'MECHANICAL';
-          if (up.includes('INST') || up.includes('ELEC')) return 'INSTRUMENT';
-          if (up.includes('PROD') || up.includes('OPER')) return 'PRODUCTION';
-        }
-        return 'NONE';
-      });
-    }
-  }, [job?.receiptNumber, job?.siloId, job?.authorisedTonnes, isOpen]);
+  
 
               })}
 

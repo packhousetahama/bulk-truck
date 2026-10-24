@@ -1175,36 +1175,39 @@ export const BulkWorkflowView: React.FC = () => {
         />
       )}
 
-      <BulkCompleteModal
-        isOpen={isCompleteModalOpen}
-        job={selectedActiveSiloId ? activeJobs[selectedActiveSiloId] || null : null}
-        onClose={() => {
-          setIsCompleteModalOpen(false);
-          setSelectedActiveSiloId(null);
-        }}
-        onConfirmComplete={async (actualTonnes, stoppageReason, status) => {
-          if (selectedActiveSiloId) {
-            const completedSilo = selectedActiveSiloId;
-            await completeJob(completedSilo, actualTonnes, stoppageReason, status);
-            if (stoppageReason && stoppageReason !== 'NONE') {
-              // Stoppage problem: KEEP FOCUSED on this silo so operator sees active delay
-              setFocusedSiloId(completedSilo);
-              setShowIntakeForm(false);
-            } else {
-              // Stoppage is NONE: finalized & completed! Free silo
-              const remaining = activeSiloIds.filter(id => id !== completedSilo);
-              if (remaining.length > 0) {
-                setFocusedSiloId(remaining[0]);
-              } else {
-                setFocusedSiloId(null);
+      {isCompleteModalOpen && selectedActiveSiloId && activeJobs[selectedActiveSiloId] && (
+        <BulkCompleteModal
+          key={`${selectedActiveSiloId}-${activeJobs[selectedActiveSiloId]?.receiptNumber}-${activeJobs[selectedActiveSiloId]?.authorisedTonnes}`}
+          isOpen={isCompleteModalOpen}
+          job={activeJobs[selectedActiveSiloId]}
+          onClose={() => {
+            setIsCompleteModalOpen(false);
+            setSelectedActiveSiloId(null);
+          }}
+          onConfirmComplete={async (actualTonnes, stoppageReason, status) => {
+            if (selectedActiveSiloId) {
+              const completedSilo = selectedActiveSiloId;
+              await completeJob(completedSilo, actualTonnes, stoppageReason, status);
+              if (stoppageReason && stoppageReason !== 'NONE') {
+                // Stoppage problem: KEEP FOCUSED on this silo so operator sees active delay
+                setFocusedSiloId(completedSilo);
                 setShowIntakeForm(false);
+              } else {
+                // Stoppage is NONE: finalized & completed! Free silo
+                const remaining = activeSiloIds.filter(id => id !== completedSilo);
+                if (remaining.length > 0) {
+                  setFocusedSiloId(remaining[0]);
+                } else {
+                  setFocusedSiloId(null);
+                  setShowIntakeForm(false);
+                }
               }
             }
-          }
-          setIsCompleteModalOpen(false);
-          setSelectedActiveSiloId(null);
-        }}
-      />
+            setIsCompleteModalOpen(false);
+            setSelectedActiveSiloId(null);
+          }}
+        />
+      )}
 
       <BulkUserModal
         isOpen={isUserModalOpen}

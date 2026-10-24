@@ -981,13 +981,14 @@ export const BulkAppProvider: React.FC<{ children: React.ReactNode }> = ({ child
           : 0;
 
         // Retain the recorded stoppage reason so completion permanently writes it to Column Q
-        const retainedReason = existing.stoppageReason || (existing as any).activeProblem || 'NONE';
+        const retainedReason = existing.stoppageReason || (existing as any).activeProblem || (existing as any).recordedStoppageReason || 'NONE';
         return {
           ...prev,
           [siloId]: {
             ...existing,
             status: 'LOADING',
             stoppageReason: retainedReason !== 'NONE' ? retainedReason : undefined,
+            recordedStoppageReason: retainedReason !== 'NONE' ? retainedReason : undefined,
             stoppageStartTime: undefined,
             stoppageStartEpochMs: undefined,
             totalDowntimeSeconds: (existing.totalDowntimeSeconds || 0) + stoppageSec
@@ -1065,9 +1066,19 @@ export const BulkAppProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
 
 
-      const finalStoppage = stoppageReason || (job.stoppageReason && job.stoppageReason !== 'NONE' ? job.stoppageReason : 'NONE');
+      let finalStoppage = 'NONE';
+      if (stoppageReason && stoppageReason !== 'NONE') {
+        finalStoppage = stoppageReason;
+      } else if (job.stoppageReason && job.stoppageReason !== 'NONE') {
+        finalStoppage = job.stoppageReason;
+      } else if ((job as any).recordedStoppageReason && (job as any).recordedStoppageReason !== 'NONE') {
+        finalStoppage = (job as any).recordedStoppageReason;
+      } else if ((job as any).activeProblem && (job as any).activeProblem !== 'NONE') {
+        finalStoppage = (job as any).activeProblem;
+      }
 
-      const finalStatus = status || (finalStoppage !== 'NONE' ? 'not completed' : 'completed');
+      const isDelayProblem = stoppageReason ? stoppageReason !== 'NONE' : false;
+      const finalStatus = status || (isDelayProblem ? 'not completed' : 'completed');
 
 
 
