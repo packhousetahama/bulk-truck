@@ -67,7 +67,6 @@ export const BulkWorkflowView: React.FC = () => {
   const [manualCement, setManualCement] = useState<CementType>('OPC');
   const [manualDriverName, setManualDriverName] = useState('');
   const [manualDriverPhone, setManualDriverPhone] = useState('');
-  const [manualDriverId, setManualDriverId] = useState('');
 
   // Find user's active jobs or any ongoing active jobs
   const activeSiloIds = Object.keys(activeJobs) as BulkSiloId[];
@@ -135,7 +134,6 @@ export const BulkWorkflowView: React.FC = () => {
       authorisedTonnes: parseFloat(manualTonnes) || 30,
       driverName: manualDriverName.trim() || undefined,
       driverPhone: manualDriverPhone.trim() || undefined,
-      driverId: manualDriverId.trim() || undefined
     };
 
     // Auto propose silo based on cement
@@ -278,7 +276,6 @@ export const BulkWorkflowView: React.FC = () => {
               <div className="bg-slate-950 p-2.5 rounded-xl border border-slate-800 col-span-2 sm:col-span-3 flex items-center justify-between text-[11px] text-slate-300">
                 <span className="text-slate-400">Driver: <strong className="text-white">{currentActiveJob.driverName}</strong></span>
                 {currentActiveJob.driverPhone && <span className="font-mono text-slate-400">{currentActiveJob.driverPhone}</span>}
-                {currentActiveJob.driverId && <span className="font-mono text-amber-400/80">ID: {currentActiveJob.driverId}</span>}
               </div>
             )}
           </div>
@@ -436,7 +433,7 @@ export const BulkWorkflowView: React.FC = () => {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
                   <div>
                     <label className="text-[11px] font-bold text-slate-400 block mb-1">Driver Name</label>
                     <input
@@ -454,16 +451,6 @@ export const BulkWorkflowView: React.FC = () => {
                       placeholder="+966..."
                       value={manualDriverPhone}
                       onChange={e => setManualDriverPhone(e.target.value)}
-                      className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-100 font-mono focus:outline-none focus:ring-2 focus:ring-amber-500"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-[11px] font-bold text-slate-400 block mb-1">Driver Iqama / ID</label>
-                    <input
-                      type="text"
-                      placeholder="10-digit ID"
-                      value={manualDriverId}
-                      onChange={e => setManualDriverId(e.target.value)}
                       className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-100 font-mono focus:outline-none focus:ring-2 focus:ring-amber-500"
                     />
                   </div>
@@ -648,20 +635,6 @@ export const BulkWorkflowView: React.FC = () => {
                 />
               </div>
 
-              {/* Ticket Silo Reference (Editable) */}
-              <div>
-                <label className="text-[10px] uppercase font-bold text-slate-300 flex items-center gap-1 mb-1">
-                  <span>{language === 'ar' ? 'الصومعة المطبوعة بالتذكرة' : 'Ticket Silo Reference'}</span>
-                </label>
-                <input
-                  type="text"
-                  value={pendingTicket.printedSiloRef || ''}
-                  onChange={e => setPendingTicket(prev => prev ? { ...prev, printedSiloRef: e.target.value } : null)}
-                  placeholder="e.g. Tahama-Silo 6"
-                  className="w-full bg-slate-900 border border-slate-700 focus:border-amber-500 focus:ring-1 focus:ring-amber-500 rounded-xl px-3 py-2 text-xs font-mono text-slate-100 placeholder-slate-600 focus:outline-none transition-colors"
-                />
-              </div>
-
               {/* Driver Name (Editable) */}
               <div>
                 <label className="text-[10px] uppercase font-bold text-slate-300 flex items-center gap-1 mb-1">
@@ -686,20 +659,6 @@ export const BulkWorkflowView: React.FC = () => {
                   value={pendingTicket.driverPhone || ''}
                   onChange={e => setPendingTicket(prev => prev ? { ...prev, driverPhone: e.target.value } : null)}
                   placeholder="+966..."
-                  className="w-full bg-slate-900 border border-slate-700 focus:border-amber-500 focus:ring-1 focus:ring-amber-500 rounded-xl px-3 py-2 text-xs font-mono text-slate-100 placeholder-slate-600 focus:outline-none transition-colors"
-                />
-              </div>
-
-              {/* Driver ID / Iqama (Editable) */}
-              <div>
-                <label className="text-[10px] uppercase font-bold text-slate-300 flex items-center gap-1 mb-1">
-                  <span>{language === 'ar' ? 'رقم الهوية / الإقامة' : 'Driver ID / Iqama'}</span>
-                </label>
-                <input
-                  type="text"
-                  value={pendingTicket.driverId || ''}
-                  onChange={e => setPendingTicket(prev => prev ? { ...prev, driverId: e.target.value } : null)}
-                  placeholder="10-digit Iqama / ID"
                   className="w-full bg-slate-900 border border-slate-700 focus:border-amber-500 focus:ring-1 focus:ring-amber-500 rounded-xl px-3 py-2 text-xs font-mono text-slate-100 placeholder-slate-600 focus:outline-none transition-colors"
                 />
               </div>

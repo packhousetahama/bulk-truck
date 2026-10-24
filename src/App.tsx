@@ -48,7 +48,7 @@ const BulkAppContent: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans selection:bg-amber-500 selection:text-slate-950 transition-colors duration-200">
+    <div className="min-h-screen w-full max-w-full overflow-x-hidden bg-slate-950 text-slate-100 flex flex-col font-sans selection:bg-amber-500 selection:text-slate-950 transition-colors duration-200">
       {/* Android PWA Install Banner */}
       {canInstall && (
         <div className="bg-gradient-to-r from-amber-600 to-amber-700 text-slate-950 px-4 py-2 flex items-center justify-between text-xs font-bold shadow-md">
@@ -89,7 +89,7 @@ const BulkAppContent: React.FC = () => {
       <BulkHeader onOpenUserModal={() => setIsUserModalOpen(true)} />
 
       {/* Main Tab View */}
-      <main className="flex-1 max-w-5xl w-full mx-auto p-3 sm:p-4">
+      <main className="flex-1 max-w-5xl w-full mx-auto p-2.5 sm:p-4 overflow-x-hidden">
         {activeTab === 'workflow' && <BulkWorkflowView />}
         {activeTab === 'records' && <BulkRecordsView />}
         {activeTab === 'manager' && <BulkManagerDashboard />}
