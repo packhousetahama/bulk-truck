@@ -342,8 +342,8 @@ export const BulkAppProvider: React.FC<{ children: React.ReactNode }> = ({ child
     ticket: BulkTicketData,
     conflictResolution?: string
   ): Promise<boolean> => {
-    if (!currentUser) {
-      showToast('Authentication required: Please sign in before starting a load.', 'error');
+    if (!currentUser || !currentUser.id || !currentUser.pin) {
+      showToast('Authentication required: Please sign in with your User ID and PIN before starting a load.', 'error');
       return false;
     }
     setLoading(true);
@@ -384,6 +384,8 @@ export const BulkAppProvider: React.FC<{ children: React.ReactNode }> = ({ child
         driverId: ticket.driverId,
         ticketSiloRef: ticket.printedSiloRef,
         operator: currentUser.name,
+        id: currentUser.id,
+        pin: currentUser.pin,
         variant: ticket.variant,
         conflictDetected: ticket.conflictDetected,
         conflictResolution
@@ -406,6 +408,11 @@ export const BulkAppProvider: React.FC<{ children: React.ReactNode }> = ({ child
   };
 
   const reportStoppage = async (siloId: BulkSiloId, reason: string, comment?: string): Promise<boolean> => {
+    if (!currentUser || !currentUser.id || !currentUser.pin) {
+      showToast('Authentication required: Please sign in before reporting a delay.', 'error');
+      return false;
+    }
+    const existingJob = activeJobs[siloId];
     setLoading(true);
     try {
       const nowMs = Date.now();
@@ -425,7 +432,15 @@ export const BulkAppProvider: React.FC<{ children: React.ReactNode }> = ({ child
         };
       });
 
-      const res = await reportBulkStoppageRemote({ siloId, reason, comment });
+      const res = await reportBulkStoppageRemote({
+        siloId,
+        reason,
+        comment,
+        id: currentUser.id,
+        pin: currentUser.pin,
+        receiptNumber: existingJob?.receiptNumber,
+        loadId: (existingJob as any)?.loadId
+      });
       if (!res.success) {
         showToast(res.error || 'Failed to record stoppage', 'error');
         return false;
@@ -442,9 +457,20 @@ export const BulkAppProvider: React.FC<{ children: React.ReactNode }> = ({ child
   };
 
   const resolveStoppage = async (siloId: BulkSiloId): Promise<boolean> => {
+    if (!currentUser || !currentUser.id || !currentUser.pin) {
+      showToast('Authentication required: Please sign in before resuming a load.', 'error');
+      return false;
+    }
+    const existingJob = activeJobs[siloId];
     setLoading(true);
     try {
-      const res = await resolveBulkStoppageRemote({ siloId });
+      const res = await resolveBulkStoppageRemote({
+        siloId,
+        id: currentUser.id,
+        pin: currentUser.pin,
+        receiptNumber: existingJob?.receiptNumber,
+        loadId: (existingJob as any)?.loadId
+      });
       if (!res.success) {
         showToast(res.error || 'Failed to resolve stoppage', 'error');
         return false;
@@ -487,6 +513,10 @@ export const BulkAppProvider: React.FC<{ children: React.ReactNode }> = ({ child
     stoppageReason?: string,
     status?: string
   ): Promise<boolean> => {
+    if (!currentUser || !currentUser.id || !currentUser.pin) {
+      showToast('Authentication required: Please sign in before completing a load.', 'error');
+      return false;
+    }
     const job = activeJobs[siloId];
     if (!job) return false;
 
@@ -514,7 +544,9 @@ export const BulkAppProvider: React.FC<{ children: React.ReactNode }> = ({ child
         netDurationMinutes: netMinutes,
         downtimeMinutes,
         stoppage: finalStoppage,
-        status: finalStatus
+        status: finalStatus,
+        id: currentUser.id,
+        pin: currentUser.pin
       });
 
       if (!res.success) {
@@ -557,7 +589,15 @@ export const BulkAppProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
     setLoading(true);
     try {
-      const res = await cancelBulkLoaderRemote({ siloId, reason, cancelledBy: currentUser.name });
+      const res = await cancelBulkLoaderRemote({
+        siloId,
+        reason,
+        cancelledBy: currentUser.name,
+        id: currentUser.id,
+        pin: currentUser.pin,
+        receiptNumber: job.receiptNumber,
+        loadId: (job as any).loadId
+      });
       if (!res.success) {
         showToast(res.error || 'Failed to cancel job', 'error');
         return false;

@@ -19,7 +19,7 @@ import {
 } from 'lucide-react';
 
 export const BulkManagerDashboard: React.FC = () => {
-  const { language, activeJobs, activeNowMs, cancelJob, showToast } = useBulkApp();
+  const { language, activeJobs, activeNowMs, cancelJob, showToast, currentUser } = useBulkApp();
   const [metrics, setMetrics] = useState<BulkDashboardMetrics | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -191,18 +191,20 @@ export const BulkManagerDashboard: React.FC = () => {
                     </div>
 
                     {/* Admin Emergency Cancel Button */}
-                    <button
-                      type="button"
-                      onClick={() => {
-                        if (confirm(`Admin action: Cancel active load on ${silo.nameEn}?`)) {
-                          cancelJob(id, 'Admin emergency cancellation');
-                        }
-                      }}
-                      className="w-full mt-1 py-1 px-2 rounded-lg bg-red-950/60 hover:bg-red-900/60 border border-red-800/60 text-red-300 text-[10px] font-bold transition flex items-center justify-center gap-1 cursor-pointer"
-                    >
-                      <XCircle className="w-3 h-3 text-red-400 shrink-0" />
-                      <span>Admin Force Cancel</span>
-                    </button>
+                    {currentUser?.role === 'admin' && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (confirm(`Admin action: Cancel active load on ${silo.nameEn}?`)) {
+                            cancelJob(id, 'Admin emergency cancellation');
+                          }
+                        }}
+                        className="w-full mt-1 py-1 px-2 rounded-lg bg-red-950/60 hover:bg-red-900/60 border border-red-800/60 text-red-300 text-[10px] font-bold transition flex items-center justify-center gap-1 cursor-pointer"
+                      >
+                        <XCircle className="w-3 h-3 text-red-400 shrink-0" />
+                        <span>Admin Force Cancel</span>
+                      </button>
+                    )}
                   </div>
                 ) : (
                   <div className="flex items-center gap-2 text-xs font-bold text-emerald-400 bg-emerald-950/20 px-3 py-2 rounded-xl border border-emerald-500/20">

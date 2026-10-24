@@ -125,6 +125,11 @@ export const BulkWorkflowView: React.FC = () => {
 
   const handleManualCreate = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!currentUser) {
+      showToast(language === 'ar' ? 'يرجى تسجيل الدخول أولاً للمتابعة' : 'Authentication required: Please sign in with your User ID and PIN.', 'error');
+      setIsUserModalOpen(true);
+      return;
+    }
     if (!manualPlate.trim() || !manualReceipt.trim()) {
       showToast('Please enter both plate and receipt numbers.', 'error');
       return;
@@ -294,7 +299,14 @@ export const BulkWorkflowView: React.FC = () => {
               {currentActiveJob.status === 'STOPPAGE' ? (
                 <button
                   type="button"
-                  onClick={() => resolveStoppage(currentActiveJob.siloId)}
+                  onClick={() => {
+                    if (!currentUser) {
+                      showToast(language === 'ar' ? 'يرجى تسجيل الدخول أولاً' : 'Authentication required: Please sign in with your User ID and PIN.', 'error');
+                      setIsUserModalOpen(true);
+                      return;
+                    }
+                    resolveStoppage(currentActiveJob.siloId);
+                  }}
                   className="py-3 px-4 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs transition shadow-lg active:scale-95 flex items-center justify-center gap-2 cursor-pointer"
                 >
                   <Play className="w-4 h-4 fill-white" />
@@ -304,6 +316,11 @@ export const BulkWorkflowView: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => {
+                    if (!currentUser) {
+                      showToast(language === 'ar' ? 'يرجى تسجيل الدخول أولاً' : 'Authentication required: Please sign in with your User ID and PIN.', 'error');
+                      setIsUserModalOpen(true);
+                      return;
+                    }
                     setSelectedActiveSiloId(currentActiveJob.siloId);
                     setIsStoppageModalOpen(true);
                   }}
@@ -317,6 +334,11 @@ export const BulkWorkflowView: React.FC = () => {
               <button
                 type="button"
                 onClick={() => {
+                  if (!currentUser) {
+                    showToast(language === 'ar' ? 'يرجى تسجيل الدخول أولاً قبل إتمام التحميل' : 'Authentication required: Please sign in before completing a load.', 'error');
+                    setIsUserModalOpen(true);
+                    return;
+                  }
                   setSelectedActiveSiloId(currentActiveJob.siloId);
                   setIsCompleteModalOpen(true);
                 }}
@@ -332,6 +354,11 @@ export const BulkWorkflowView: React.FC = () => {
               <button
                 type="button"
                 onClick={() => {
+                  if (!currentUser) {
+                    showToast(language === 'ar' ? 'يرجى تسجيل الدخول أولاً' : 'Authentication required: Please sign in with your User ID and PIN.', 'error');
+                    setIsUserModalOpen(true);
+                    return;
+                  }
                   if (confirm('Are you sure you want to cancel this bulk loading session?')) {
                     cancelJob(currentActiveJob.siloId, 'Operator cancelled');
                   }
@@ -362,7 +389,14 @@ export const BulkWorkflowView: React.FC = () => {
           {/* Big Friendly Scan Button matching Truck-Entry */}
           <button
             type="button"
-            onClick={() => setIsScannerOpen(true)}
+            onClick={() => {
+              if (!currentUser) {
+                showToast(language === 'ar' ? 'يرجى تسجيل الدخول أولاً لمسح التذكرة' : 'Authentication required: Please sign in with User ID and PIN before scanning.', 'warning');
+                setIsUserModalOpen(true);
+                return;
+              }
+              setIsScannerOpen(true);
+            }}
             className="w-full py-4 rounded-2xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-black text-base shadow-xl shadow-amber-500/20 active:scale-98 transition flex items-center justify-center gap-3 cursor-pointer"
           >
             <Camera className="w-6 h-6 text-slate-950" />
@@ -373,7 +407,14 @@ export const BulkWorkflowView: React.FC = () => {
           <div className="pt-2 border-t border-slate-800/80">
             <button
               type="button"
-              onClick={() => setShowManualInputs(!showManualInputs)}
+              onClick={() => {
+                if (!currentUser) {
+                  showToast(language === 'ar' ? 'يرجى تسجيل الدخول أولاً للإدخال اليدوي' : 'Authentication required: Please sign in with User ID and PIN.', 'warning');
+                  setIsUserModalOpen(true);
+                  return;
+                }
+                setShowManualInputs(!showManualInputs);
+              }}
               className="w-full text-center text-xs font-bold text-slate-400 hover:text-amber-400 transition cursor-pointer"
             >
               {showManualInputs ? '▲ Hide Manual Entry' : '▼ Or Enter Ticket Manually'}

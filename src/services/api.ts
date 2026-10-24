@@ -118,6 +118,9 @@ export async function startBulkLoaderRemote(params: {
   ticketSiloRef?: string;
   conflictDetected?: boolean;
   conflictResolution?: string;
+  id?: string;
+  userId?: string;
+  pin?: string;
 }): Promise<{ success: boolean; job?: BulkActiveJob; error?: string }> {
   const url = getBackendUrl();
   try {
@@ -126,6 +129,8 @@ export async function startBulkLoaderRemote(params: {
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
       body: JSON.stringify({
         action: 'startBulkLoader',
+        id: params.userId || params.id,
+        pin: params.pin,
         ...params
       })
     });
@@ -144,6 +149,11 @@ export async function reportBulkStoppageRemote(params: {
   siloId: BulkSiloId;
   reason: string;
   comment?: string;
+  id?: string;
+  userId?: string;
+  pin?: string;
+  receiptNumber?: string;
+  loadId?: string;
 }): Promise<{ success: boolean; job?: BulkActiveJob; error?: string }> {
   const url = getBackendUrl();
   try {
@@ -152,6 +162,8 @@ export async function reportBulkStoppageRemote(params: {
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
       body: JSON.stringify({
         action: 'reportBulkStoppage',
+        id: params.userId || params.id,
+        pin: params.pin,
         ...params
       })
     });
@@ -168,6 +180,12 @@ export async function reportBulkStoppageRemote(params: {
 
 export async function resolveBulkStoppageRemote(params: {
   siloId: BulkSiloId;
+  id?: string;
+  userId?: string;
+  pin?: string;
+  receiptNumber?: string;
+  loadId?: string;
+  stoppageId?: string;
 }): Promise<{ success: boolean; job?: BulkActiveJob; error?: string }> {
   const url = getBackendUrl();
   try {
@@ -176,6 +194,8 @@ export async function resolveBulkStoppageRemote(params: {
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
       body: JSON.stringify({
         action: 'resolveBulkStoppage',
+        id: params.userId || params.id,
+        pin: params.pin,
         ...params
       })
     });
@@ -204,6 +224,9 @@ export async function completeBulkLoaderRemote(params: {
   downtimeMinutes?: number;
   stoppage?: string;
   status?: string;
+  id?: string;
+  userId?: string;
+  pin?: string;
 }): Promise<{ success: boolean; completedJob?: any; error?: string }> {
   const url = getBackendUrl();
   try {
@@ -212,6 +235,8 @@ export async function completeBulkLoaderRemote(params: {
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
       body: JSON.stringify({
         action: 'completeBulkLoader',
+        id: params.userId || params.id,
+        pin: params.pin,
         ...params
       })
     });
@@ -229,6 +254,11 @@ export async function cancelBulkLoaderRemote(params: {
   siloId: BulkSiloId;
   reason?: string;
   cancelledBy?: string;
+  id?: string;
+  userId?: string;
+  pin?: string;
+  receiptNumber?: string;
+  loadId?: string;
 }): Promise<{ success: boolean; error?: string }> {
   const url = getBackendUrl();
   try {
@@ -237,6 +267,8 @@ export async function cancelBulkLoaderRemote(params: {
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
       body: JSON.stringify({
         action: 'cancelBulkLoader',
+        id: params.userId || params.id,
+        pin: params.pin,
         ...params
       })
     });
@@ -247,7 +279,7 @@ export async function cancelBulkLoaderRemote(params: {
   }
 }
 
-export async function submitBulkEntry(entry: Partial<BulkEntry>): Promise<{ success: boolean; id?: string; error?: string }> {
+export async function submitBulkEntry(entry: Partial<BulkEntry>, user?: User | null): Promise<{ success: boolean; id?: string; error?: string }> {
   const url = getBackendUrl();
   try {
     const res = await fetch(url, {
@@ -255,6 +287,8 @@ export async function submitBulkEntry(entry: Partial<BulkEntry>): Promise<{ succ
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
       body: JSON.stringify({
         action: 'saveBulkEntry',
+        id: user?.id,
+        pin: user?.pin,
         entry: {
           ...entry,
           vehicleNumber: entry.truckNumber || (entry as any).vehicleNumber,
