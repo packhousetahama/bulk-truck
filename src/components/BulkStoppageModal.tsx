@@ -46,7 +46,7 @@ export const BulkStoppageModal: React.FC<BulkStoppageModalProps> = ({
                 {language === 'ar' ? 'تسجيل توقف / عطل فني' : 'Report Loading Stoppage'}
               </h2>
               <p className="text-[11px] text-slate-400">
-                {silo.nameEn} ({silo.cementType})
+                {language === 'ar' ? (silo.nameAr || silo.nameEn) : silo.nameEn} ({silo.cementType})
               </p>
             </div>
           </div>
@@ -96,7 +96,7 @@ export const BulkStoppageModal: React.FC<BulkStoppageModalProps> = ({
               type="text"
               value={customComment}
               onChange={e => setCustomComment(e.target.value)}
-              placeholder="e.g. Technician called / waiting for air pressure"
+              placeholder={language === 'ar' ? "مثال: تم استدعاء الفني / في انتظار ضغط الهواء..." : "e.g. Technician called / waiting for air pressure"}
               className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-red-500"
             />
           </div>

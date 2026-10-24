@@ -341,22 +341,18 @@ export const BulkQRScannerModal: React.FC<BulkQRScannerModalProps> = ({
                 className="px-3 py-1.5 rounded-xl bg-slate-900/90 hover:bg-slate-800 disabled:opacity-50 text-amber-400 border border-amber-500/40 text-[11px] font-bold flex items-center gap-1.5 shadow-lg backdrop-blur cursor-pointer"
               >
                 <Camera className="w-3.5 h-3.5" />
-                <span>{isProcessingPhoto ? 'Analyzing Photo...' : language === 'ar' ? 'التقاط صورة / المعرض' : 'Snap Photo / Upload'}</span>
+                <span>{isProcessingPhoto ? (language === 'ar' ? 'جاري فحص الصورة...' : 'Analyzing Photo...') : language === 'ar' ? 'التقاط صورة / المعرض' : 'Snap Photo / Upload'}</span>
               </button>
             </div>
 
             {cameraError && (
               <div className="absolute inset-0 bg-slate-950/95 flex flex-col items-center justify-center p-4 text-center z-20">
                 <AlertTriangle className="w-8 h-8 text-amber-400 mb-2" />
-                <p className="text-xs text-slate-300 font-semibold mb-1">
-                  Camera or Scan Notice
-                </p>
+                <p className="text-xs text-slate-300 font-semibold mb-1">{language === 'ar' ? "تنبيه الكاميرا والمسح" : "Camera or Scan Notice"}</p>
                 <p className="text-[11px] text-slate-400 max-w-xs mb-3">
                   {cameraError}
                 </p>
-                <span className="text-[11px] text-amber-400 font-bold">
-                  Enter slip code (e.g. DR5O4R) below
-                </span>
+                <span className="text-[11px] text-amber-400 font-bold">{language === 'ar' ? "أدخل رقم التذكرة (مثال: DR5O4R) أدناه" : "Enter slip code (e.g. DR5O4R) below"}</span>
               </div>
             )}
           </div>
@@ -373,7 +369,7 @@ export const BulkQRScannerModal: React.FC<BulkQRScannerModalProps> = ({
             <textarea
               value={manualText}
               onChange={e => setManualText(e.target.value)}
-              placeholder="Paste ticket QR JSON / Pipe or type slip code (e.g. DR5O4R)..."
+              placeholder={language === 'ar' ? 'الصق نص الرمز أو اكتب رقم التذكرة (مثال: DR5O4R)...' : 'Paste ticket QR JSON / Pipe or type slip code (e.g. DR5O4R)...'}
               rows={2}
               className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-100 placeholder-slate-500 font-mono focus:outline-none focus:ring-2 focus:ring-amber-500"
             />

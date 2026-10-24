@@ -980,26 +980,18 @@ export const BulkAppProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
           : 0;
 
+        // Retain the recorded stoppage reason so completion permanently writes it to Column Q
+        const retainedReason = existing.stoppageReason || (existing as any).activeProblem || 'NONE';
         return {
-
           ...prev,
-
           [siloId]: {
-
             ...existing,
-
             status: 'LOADING',
-
-            stoppageReason: undefined,
-
+            stoppageReason: retainedReason !== 'NONE' ? retainedReason : undefined,
             stoppageStartTime: undefined,
-
             stoppageStartEpochMs: undefined,
-
             totalDowntimeSeconds: (existing.totalDowntimeSeconds || 0) + stoppageSec
-
           }
-
         };
 
       });
@@ -1008,7 +1000,12 @@ export const BulkAppProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
       playSuccess();
 
-      showToast(`Stoppage resolved on ${BULK_SILOS[siloId].nameEn}. Loading resumed.`, 'success');
+      showToast(
+        language === 'ar'
+          ? `تم حل التوقف على ${BULK_SILOS[siloId].nameAr}. استئناف التحميل المباشر.`
+          : `Stoppage resolved on ${BULK_SILOS[siloId].nameEn}. Loading resumed.`,
+        'success'
+      );
 
       return true;
 

@@ -65,7 +65,7 @@ export const BulkManagerDashboard: React.FC = () => {
             <button
               type="button"
               onClick={async () => {
-                if (confirm('Admin Action: Reset all active loaders and clear stuck sessions?')) {
+                if (confirm(language === 'ar' ? 'إجراء إداري: هل أنت متأكد من إعادة ضبط كافة الصوامع ومسح الجلسات المعلقة؟' : 'Admin Action: Reset all active loaders and clear stuck sessions?')) {
                   await resetActiveLoaders();
                 }
               }}
@@ -73,7 +73,7 @@ export const BulkManagerDashboard: React.FC = () => {
               title="Clear all active sessions across all 4 silos"
             >
               <XCircle className="w-3.5 h-3.5 text-red-400" />
-              <span>Reset All Loaders</span>
+              <span>{language === 'ar' ? "إعادة ضبط الصوامع" : "Reset All Loaders"}</span>
             </button>
           )}
           <button
@@ -91,52 +91,52 @@ export const BulkManagerDashboard: React.FC = () => {
         <div className="bg-slate-900 border border-slate-800 rounded-xl sm:rounded-2xl p-3 sm:p-4 space-y-1">
           <span className="text-[10px] sm:text-[11px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5 truncate">
             <Scale className="w-3.5 h-3.5 text-amber-400 shrink-0" />
-            <span className="truncate">Total Dispatched</span>
+            <span className="truncate">{language === 'ar' ? "إجمالي المحمّل" : "Total Dispatched"}</span>
           </span>
           <div className="text-xl sm:text-2xl font-black font-mono text-amber-400">
             {totalTonnes.toLocaleString()} <span className="text-xs text-slate-400 font-sans">t</span>
           </div>
-          <span className="text-[9px] sm:text-[10px] text-slate-500 block truncate">Today's bulk volume</span>
+          <span className="text-[9px] sm:text-[10px] text-slate-500 block truncate">{language === 'ar' ? "إجمالي حجم اليوم" : "Today's bulk volume"}</span>
         </div>
 
         <div className="bg-slate-900 border border-slate-800 rounded-xl sm:rounded-2xl p-3 sm:p-4 space-y-1">
           <span className="text-[10px] sm:text-[11px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5 truncate">
             <Truck className="w-3.5 h-3.5 text-sky-400 shrink-0" />
-            <span className="truncate">Completed Loads</span>
+            <span className="truncate">{language === 'ar' ? "الشحنات المنجزة" : "Completed Loads"}</span>
           </span>
           <div className="text-xl sm:text-2xl font-black font-mono text-sky-400">
-            {totalTrucks} <span className="text-xs text-slate-400 font-sans">trucks</span>
+            {totalTrucks} <span className="text-xs text-slate-400 font-sans">{language === 'ar' ? "شاحنة" : "trucks"}</span>
           </div>
-          <span className="text-[9px] sm:text-[10px] text-slate-500 block truncate">Finished loads</span>
+          <span className="text-[9px] sm:text-[10px] text-slate-500 block truncate">{language === 'ar' ? "شاحنات مكتملة" : "Finished loads"}</span>
         </div>
 
         <div className="bg-slate-900 border border-slate-800 rounded-xl sm:rounded-2xl p-3 sm:p-4 space-y-1">
           <span className="text-[10px] sm:text-[11px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5 truncate">
             <Clock className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-            <span className="truncate">Avg Loading Time</span>
+            <span className="truncate">{language === 'ar' ? "متوسط وقت التحميل" : "Avg Loading Time"}</span>
           </span>
           <div className="text-xl sm:text-2xl font-black font-mono text-emerald-400">
-            {avgGross} <span className="text-xs text-slate-400 font-sans">min</span>
+            {avgGross} <span className="text-xs text-slate-400 font-sans">{language === 'ar' ? "دقيقة" : "min"}</span>
           </div>
-          <span className="text-[9px] sm:text-[10px] text-slate-500 block truncate">Gross avg per load</span>
+          <span className="text-[9px] sm:text-[10px] text-slate-500 block truncate">{language === 'ar' ? "متوسط الوقت الإجمالي للشاحنة" : "Gross avg per load"}</span>
         </div>
 
         <div className="bg-slate-900 border border-slate-800 rounded-xl sm:rounded-2xl p-3 sm:p-4 space-y-1">
           <span className="text-[10px] sm:text-[11px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5 truncate">
             <AlertTriangle className="w-3.5 h-3.5 text-red-400 shrink-0" />
-            <span className="truncate">Total Downtime</span>
+            <span className="truncate">{language === 'ar' ? "إجمالي وقت الأعطال" : "Total Downtime"}</span>
           </span>
           <div className="text-xl sm:text-2xl font-black font-mono text-red-400">
-            {totalDowntime} <span className="text-xs text-slate-400 font-sans">min</span>
+            {totalDowntime} <span className="text-xs text-slate-400 font-sans">{language === 'ar' ? "دقيقة" : "min"}</span>
           </div>
-          <span className="text-[9px] sm:text-[10px] text-slate-500 block truncate">Stoppage delay</span>
+          <span className="text-[9px] sm:text-[10px] text-slate-500 block truncate">{language === 'ar' ? "تأخير الأعطال" : "Stoppage delay"}</span>
         </div>
       </div>
 
       {/* Production by Cement Type Card */}
       <div className="bg-slate-900 border border-slate-800 rounded-2xl sm:rounded-3xl p-3.5 sm:p-5 shadow-xl space-y-2.5 sm:space-y-3">
         <h3 className="text-[11px] sm:text-xs font-bold text-slate-400 uppercase tracking-wider">
-          Tonnes Dispatched by Material
+          {language === 'ar' ? "الكميات المحمّلة حسب نوع الإسمنت" : "Tonnes Dispatched by Material"}
         </h3>
         <div className="grid grid-cols-3 gap-1.5 sm:gap-3 text-center">
           <div className="bg-emerald-950/20 border border-emerald-500/30 rounded-xl sm:rounded-2xl p-2 sm:p-3">
@@ -162,7 +162,7 @@ export const BulkManagerDashboard: React.FC = () => {
       {/* Live 4-Silo Cockpit & Emergency Controls */}
       <div className="bg-slate-900 border border-slate-800 rounded-2xl sm:rounded-3xl p-3.5 sm:p-5 shadow-xl space-y-3 sm:space-y-4">
         <h3 className="text-[11px] sm:text-xs font-bold text-slate-400 uppercase tracking-wider">
-          Live Authorised Silos Bay Cockpit
+          {language === 'ar' ? "لوحة متابعة صوامع السائب المباشرة" : "Live Authorised Silos Bay Cockpit"}
         </h3>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 sm:gap-3">
@@ -183,7 +183,7 @@ export const BulkManagerDashboard: React.FC = () => {
               >
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0">
-                    <h4 className="text-xs sm:text-sm font-black text-slate-100 truncate">{silo.nameEn}</h4>
+                    <h4 className="text-xs sm:text-sm font-black text-slate-100 truncate">{language === 'ar' ? (silo.nameAr || silo.nameEn) : silo.nameEn}</h4>
                     <span className="text-[10px] sm:text-[11px] text-slate-400 block truncate">{silo.defaultStation}</span>
                   </div>
                   <span className="px-2 py-0.5 rounded text-[10px] sm:text-xs font-black uppercase bg-slate-900 border border-slate-700 text-amber-400 font-mono shrink-0">
@@ -203,7 +203,7 @@ export const BulkManagerDashboard: React.FC = () => {
                     </div>
 
                     <div className="flex items-center justify-between text-[10px] sm:text-[11px] text-slate-400">
-                      <span className="truncate">Op: {activeJob.operator}</span>
+                      <span className="truncate">{language === 'ar' ? "المشغل:" : "Op:"} {activeJob.operator}</span>
                       <span className="font-mono shrink-0">{activeJob.authorisedTonnes} t</span>
                     </div>
 
@@ -212,21 +212,21 @@ export const BulkManagerDashboard: React.FC = () => {
                       <button
                         type="button"
                         onClick={() => {
-                          if (confirm(`Admin action: Cancel active load on ${silo.nameEn}?`)) {
+                          if (confirm(language === 'ar' ? `إجراء إداري: هل تريد إلغاء التحميل النشط على ${silo.nameAr || silo.nameEn}؟` : `Admin action: Cancel active load on ${silo.nameEn}?`)) {
                             cancelJob(id, 'Admin emergency cancellation');
                           }
                         }}
                         className="w-full mt-1 py-1 px-2 rounded-lg bg-red-950/60 hover:bg-red-900/60 border border-red-800/60 text-red-300 text-[10px] font-bold transition flex items-center justify-center gap-1 cursor-pointer"
                       >
                         <XCircle className="w-3 h-3 text-red-400 shrink-0" />
-                        <span>Admin Force Cancel</span>
+                        <span>{language === 'ar' ? "إلغاء إداري إجباري" : "Admin Force Cancel"}</span>
                       </button>
                     )}
                   </div>
                 ) : (
                   <div className="flex items-center gap-2 text-xs font-bold text-emerald-400 bg-emerald-950/20 px-3 py-2 rounded-xl border border-emerald-500/20">
                     <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                    <span>Idle & Ready for Loading</span>
+                    <span>{language === 'ar' ? "متاحة وجاهزة للتحميل" : "Idle & Ready for Loading"}</span>
                   </div>
                 )}
               </div>

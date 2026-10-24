@@ -140,7 +140,7 @@ export const BulkRecordsView: React.FC = () => {
               className="px-3 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 disabled:opacity-40 text-slate-950 font-black text-xs transition shadow-md shadow-amber-500/10 flex items-center gap-1.5 active:scale-95 cursor-pointer"
             >
               <Download className="w-3.5 h-3.5 text-slate-950" />
-              <span>Export CSV</span>
+              <span>{language === 'ar' ? "تصدير CSV" : "Export CSV"}</span>
             </button>
           </div>
         </div>
@@ -152,7 +152,7 @@ export const BulkRecordsView: React.FC = () => {
             <Search className="w-3.5 h-3.5 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" />
             <input
               type="text"
-              placeholder="Search plate, receipt, operator..."
+              placeholder={language === 'ar' ? "بحث برقم اللوحة، الإيصال، المشغل..." : "Search plate, receipt, operator..."}
               value={search}
               onChange={e => setSearch(e.target.value)}
               className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-8 pr-3 py-1.5 text-xs text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-amber-500"
@@ -165,10 +165,10 @@ export const BulkRecordsView: React.FC = () => {
             onChange={e => setFilterShift(e.target.value)}
             className="bg-slate-950 border border-slate-800 rounded-xl px-2.5 py-1.5 text-xs text-slate-300 font-semibold focus:outline-none"
           >
-            <option value="">All Shifts (الكل)</option>
-            <option value="Shift A">Shift A (07:00 - 15:00)</option>
-            <option value="Shift B">Shift B (15:00 - 23:00)</option>
-            <option value="Shift C">Shift C (23:00 - 07:00)</option>
+            <option value="">{language === 'ar' ? "جميع الورديات (الكل)" : "All Shifts (All)"}</option>
+            <option value="Shift A">{language === 'ar' ? "وردية A (07:00 - 15:00)" : "Shift A (07:00 - 15:00)"}</option>
+            <option value="Shift B">{language === 'ar' ? "وردية B (15:00 - 23:00)" : "Shift B (15:00 - 23:00)"}</option>
+            <option value="Shift C">{language === 'ar' ? "وردية C (23:00 - 07:00)" : "Shift C (23:00 - 07:00)"}</option>
           </select>
 
           {/* Silo Filter */}
@@ -177,7 +177,7 @@ export const BulkRecordsView: React.FC = () => {
             onChange={e => setFilterSilo(e.target.value)}
             className="bg-slate-950 border border-slate-800 rounded-xl px-2.5 py-1.5 text-xs text-slate-300 font-semibold focus:outline-none"
           >
-            <option value="">All Silos (جميع الصوامع)</option>
+            <option value="">{language === 'ar' ? "جميع الصوامع" : "All Silos"}</option>
             {BULK_SILO_IDS.map(id => (
               <option key={id} value={id}>
                 {BULK_SILOS[id].nameEn} ({BULK_SILOS[id].cementType})
@@ -191,10 +191,10 @@ export const BulkRecordsView: React.FC = () => {
             onChange={e => setFilterCement(e.target.value)}
             className="bg-slate-950 border border-slate-800 rounded-xl px-2.5 py-1.5 text-xs text-slate-300 font-semibold focus:outline-none"
           >
-            <option value="">All Materials (جميع الأنواع)</option>
-            <option value="OPC">OPC (Ordinary Portland)</option>
-            <option value="GU">GU (General Use)</option>
-            <option value="PPC">PPC (Portland Pozzolana)</option>
+            <option value="">{language === 'ar' ? "جميع المواد" : "All Materials"}</option>
+            <option value="OPC">{language === 'ar' ? "OPC (إسمنت بورتلاندي عادي)" : "OPC (Ordinary Portland)"}</option>
+            <option value="GU">{language === 'ar' ? "GU (إسمنت الاستخدامات العامة)" : "GU (General Use)"}</option>
+            <option value="PPC">{language === 'ar' ? "PPC (إسمنت بورتلاندي بوزولاني)" : "PPC (Portland Pozzolana)"}</option>
           </select>
         </div>
       </div>
@@ -203,7 +203,7 @@ export const BulkRecordsView: React.FC = () => {
       <div className="bg-slate-900 border border-slate-800 rounded-3xl overflow-hidden shadow-xl">
         {filtered.length === 0 ? (
           <div className="p-8 text-center text-slate-500 text-xs">
-            {loading ? 'Fetching dispatches from Google Sheets...' : 'No loading records match the selected criteria.'}
+            {loading ? (language === 'ar' ? 'جاري جلب السجلات من شيت قوقل...' : 'Fetching dispatches from Google Sheets...') : (language === 'ar' ? 'لا توجد شحنات مطابقة لمعايير البحث المحددة.' : 'No loading records match the selected criteria.')}
           </div>
         ) : (
           <div className="divide-y divide-slate-800/80">
@@ -252,17 +252,17 @@ export const BulkRecordsView: React.FC = () => {
                       {item.actualTonnes} t
                     </span>
                     <span className="text-[10px] text-slate-500 font-mono">
-                      auth: {item.authorisedTonnes} t
+                      {language === 'ar' ? "المصرح:" : "auth:"} {item.authorisedTonnes} t
                     </span>
                   </div>
 
                   <div className="text-right text-[11px] border-l border-slate-800 pl-3">
                     <span className="text-slate-300 font-mono font-bold block">
-                      {item.grossDurationMinutes}m gross
+                      {item.grossDurationMinutes}m {language === 'ar' ? "إجمالي" : "gross"}
                     </span>
                     {item.downtimeMinutes > 0 && (
                       <span className="text-red-400 font-mono block text-[10px]">
-                        -{item.downtimeMinutes}m down
+                        -{item.downtimeMinutes}m {language === 'ar' ? "عطل" : "down"}
                       </span>
                     )}
                   </div>
