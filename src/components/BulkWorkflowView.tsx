@@ -90,7 +90,10 @@ export const BulkWorkflowView: React.FC = () => {
 
   const duplicateRecorded = currentReceiptNormalized
     ? (recentEntries || []).find(
-        (e: BulkEntry) => e && String(e.receiptNumber || '').trim().toUpperCase() === currentReceiptNormalized
+        (e: BulkEntry) =>
+          e &&
+          String(e.receiptNumber || '').trim().toUpperCase() === currentReceiptNormalized &&
+          String(e.status || '').trim().toLowerCase() === 'completed'
       )
     : undefined;
 
@@ -521,6 +524,22 @@ export const BulkWorkflowView: React.FC = () => {
                     ? ` is currently actively loading on ${duplicateActive.siloId} by ${duplicateActive.operator}.`
                     : ' is a duplicate.'}
                 </p>
+                {duplicateActive && (
+                  <div className="pt-1 flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        if (confirm(`Cancel active session for Receipt #${pendingTicket.receiptNumber} on ${duplicateActive.siloId}?`)) {
+                          await cancelJob(duplicateActive.siloId, 'Operator cleared active session');
+                          showToast('Active loading session cleared.', 'info');
+                        }
+                      }}
+                      className="px-3 py-1 rounded-lg bg-red-900/90 hover:bg-red-800 text-white font-bold text-[11px] border border-red-700 transition cursor-pointer"
+                    >
+                      {language === 'ar' ? 'إلغاء وتحرير الصومعة' : 'Clear / Cancel Active Load'}
+                    </button>
+                  </div>
+                )}
                 
               </div>
             </div>

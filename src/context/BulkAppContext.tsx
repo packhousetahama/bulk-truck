@@ -497,45 +497,15 @@ export const BulkAppProvider: React.FC<{ children: React.ReactNode }> = ({ child
       const downtimeMinutes = Math.round(((job.totalDowntimeSeconds || 0) / 60) * 10) / 10;
       const netMinutes = Math.max(0, Math.round((grossMinutes - downtimeMinutes) * 10) / 10);
 
-      // 1. Submit entry to Google Sheets (BULK ENTRY)
-      const entry: Partial<BulkEntry> = {
-        date: getSaudiCurrentDateOnly(),
-        time: endTime,
-        shift: job.shift || getSaudiCurrentShift(),
-        siloId,
-        siloName: BULK_SILOS[siloId].nameEn,
-        station: BULK_SILOS[siloId].defaultStation,
-        truckNumber: job.truckNumber,
-        receiptNumber: job.receiptNumber,
-        cementType: job.cementType,
-        authorisedTonnes: job.authorisedTonnes,
-        actualTonnes,
-        varianceTonnes: Math.round((actualTonnes - job.authorisedTonnes) * 100) / 100,
-        driverName: job.driverName,
-        driverPhone: job.driverPhone,
-        driverId: job.driverId,
-        startTime: job.startTime,
-        endTime,
-        grossDurationMinutes: grossMinutes,
-        downtimeMinutes,
-        netDurationMinutes: netMinutes,
-        loadingRateTonnesPerHour: netMinutes > 0 ? Math.round((actualTonnes / (netMinutes / 60)) * 10) / 10 : 0,
-        operator: job.operator || (currentUser?.name ?? 'Operator'),
-        stoppageReason: stoppageReason || (job.stoppageReason && job.stoppageReason !== 'NONE' ? job.stoppageReason : 'NONE'),
-        status: (status || (stoppageReason && stoppageReason !== 'NONE' ? 'not completed' : 'completed')) as any,
-        qrVariant: job.variant,
-        conflictDetected: !!job.conflictDetected,
-        conflictResolution: job.conflictResolution,
-        comments: job.conflictResolution ? `Conflict resolved: ${job.conflictResolution}` : ''
-      };
+      const finalStoppage = stoppageReason || (job.stoppageReason && job.stoppageReason !== 'NONE' ? job.stoppageReason : 'NONE');
+      const finalStatus = status || (finalStoppage !== 'NONE' ? 'not completed' : 'completed');
 
-      await submitBulkEntry(entry);
-
-      // 2. Clear remote active job
-      await completeBulkLoaderRemote({
+      // Complete active bulk job remotely & commit final metrics to BULK ENTRY sheet
+      const res = await completeBulkLoaderRemote({
         siloId,
         actualTonnes,
         receiptNumber: job.receiptNumber,
+        loadId: (job as any).loadId,
         driverName: job.driverName,
         driverPhone: job.driverPhone,
         driverId: job.driverId,
@@ -543,9 +513,13 @@ export const BulkAppProvider: React.FC<{ children: React.ReactNode }> = ({ child
         grossDurationMinutes: grossMinutes,
         netDurationMinutes: netMinutes,
         downtimeMinutes,
-        stoppage: stoppageReason || (job.stoppageReason && job.stoppageReason !== 'NONE' ? job.stoppageReason : 'NONE'),
-        status: status || (stoppageReason && stoppageReason !== 'NONE' ? 'not completed' : 'completed')
+        stoppage: finalStoppage,
+        status: finalStatus
       });
+
+      if (!res.success) {
+        throw new Error(res.error || 'Failed to complete load on server');
+      }
 
       // Clear local state
       setActiveJobs(prev => {
