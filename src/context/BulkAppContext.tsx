@@ -550,6 +550,12 @@ export const BulkAppProvider: React.FC<{ children: React.ReactNode }> = ({ child
         siloId,
         actualTonnes,
         receiptNumber: job.receiptNumber,
+        truckNumber: job.truckNumber,
+        vehicleNumber: job.truckNumber,
+        cementType: job.cementType,
+        authorisedTonnes: job.authorisedTonnes,
+        startTime: job.startTime,
+        endTime,
         loadId: (job as any).loadId,
         driverName: job.driverName,
         driverPhone: job.driverPhone,
@@ -561,6 +567,7 @@ export const BulkAppProvider: React.FC<{ children: React.ReactNode }> = ({ child
         stoppage: finalStoppage,
         status: finalStatus,
         id: currentUser.id,
+        userId: currentUser.id,
         pin: currentUser.pin
       });
 

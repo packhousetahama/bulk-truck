@@ -225,6 +225,12 @@ export async function completeBulkLoaderRemote(params: {
   siloId: BulkSiloId;
   actualTonnes: number;
   receiptNumber?: string;
+  truckNumber?: string;
+  vehicleNumber?: string;
+  cementType?: CementType;
+  authorisedTonnes?: number;
+  startTime?: string;
+  endTime?: string;
   loadId?: string;
   driverName?: string;
   driverPhone?: string;
