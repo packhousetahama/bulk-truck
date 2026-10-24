@@ -43,7 +43,7 @@ interface BulkAppContextType {
   startJob: (siloId: BulkSiloId, ticket: BulkTicketData, conflictResolution?: string) => Promise<boolean>;
   reportStoppage: (siloId: BulkSiloId, reason: string, comment?: string) => Promise<boolean>;
   resolveStoppage: (siloId: BulkSiloId) => Promise<boolean>;
-  completeJob: (siloId: BulkSiloId, actualTonnes: number) => Promise<boolean>;
+  completeJob: (siloId: BulkSiloId, actualTonnes: number, stoppageReason?: string, status?: string) => Promise<boolean>;
   cancelJob: (siloId: BulkSiloId, reason?: string) => Promise<boolean>;
   toast: { message: string; type: 'success' | 'error' | 'info' | 'warning' } | null;
   showToast: (message: string, type?: 'success' | 'error' | 'info' | 'warning') => void;
@@ -481,7 +481,12 @@ export const BulkAppProvider: React.FC<{ children: React.ReactNode }> = ({ child
     }
   };
 
-  const completeJob = async (siloId: BulkSiloId, actualTonnes: number): Promise<boolean> => {
+  const completeJob = async (
+    siloId: BulkSiloId,
+    actualTonnes: number,
+    stoppageReason?: string,
+    status?: string
+  ): Promise<boolean> => {
     const job = activeJobs[siloId];
     if (!job) return false;
 
@@ -516,7 +521,8 @@ export const BulkAppProvider: React.FC<{ children: React.ReactNode }> = ({ child
         netDurationMinutes: netMinutes,
         loadingRateTonnesPerHour: netMinutes > 0 ? Math.round((actualTonnes / (netMinutes / 60)) * 10) / 10 : 0,
         operator: job.operator || (currentUser?.name ?? 'Operator'),
-        status: 'COMPLETED',
+        stoppageReason: stoppageReason || (job.stoppageReason && job.stoppageReason !== 'NONE' ? job.stoppageReason : 'NONE'),
+        status: (status || (stoppageReason && stoppageReason !== 'NONE' ? 'not completed' : 'completed')) as any,
         qrVariant: job.variant,
         conflictDetected: !!job.conflictDetected,
         conflictResolution: job.conflictResolution,
@@ -536,7 +542,9 @@ export const BulkAppProvider: React.FC<{ children: React.ReactNode }> = ({ child
         ticketSiloRef: job.ticketSiloRef,
         grossDurationMinutes: grossMinutes,
         netDurationMinutes: netMinutes,
-        downtimeMinutes
+        downtimeMinutes,
+        stoppage: stoppageReason || (job.stoppageReason && job.stoppageReason !== 'NONE' ? job.stoppageReason : 'NONE'),
+        status: status || (stoppageReason && stoppageReason !== 'NONE' ? 'not completed' : 'completed')
       });
 
       // Clear local state

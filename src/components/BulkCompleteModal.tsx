@@ -1,15 +1,15 @@
 import React, { useState } from 'react';
 import { BulkActiveJob } from '../types';
-import { BULK_SILOS } from '../utils/constants';
+import { BULK_SILOS, BULK_STOPPAGE_OPTIONS, BulkStoppageType } from '../utils/constants';
 import { useBulkApp } from '../context/BulkAppContext';
 import { calculateDurationMinutes, getSaudiCurrentTimeOnly } from '../utils/timeZone';
-import { CheckCircle2, X, Scale, Clock, AlertCircle } from 'lucide-react';
+import { CheckCircle2, X, Scale, AlertTriangle } from 'lucide-react';
 
 interface BulkCompleteModalProps {
   isOpen: boolean;
   job: BulkActiveJob | null;
   onClose: () => void;
-  onConfirmComplete: (actualTonnes: number) => void;
+  onConfirmComplete: (actualTonnes: number, stoppageReason: BulkStoppageType, status: 'completed' | 'not completed') => void;
 }
 
 export const BulkCompleteModal: React.FC<BulkCompleteModalProps> = ({
@@ -22,6 +22,15 @@ export const BulkCompleteModal: React.FC<BulkCompleteModalProps> = ({
   const [actualTonnes, setActualTonnes] = useState<string>(
     job ? String(job.authorisedTonnes || 30) : '30'
   );
+  const [stoppage, setStoppage] = useState<BulkStoppageType>(() => {
+    if (job?.stoppageReason && job.stoppageReason !== 'NONE') {
+      const up = job.stoppageReason.toUpperCase();
+      if (up.includes('MECH')) return 'MECHANICAL';
+      if (up.includes('INST') || up.includes('ELEC')) return 'INSTRUMENT';
+      if (up.includes('PROD') || up.includes('OPER')) return 'PRODUCTION';
+    }
+    return 'NONE';
+  });
 
   if (!isOpen || !job) return null;
 
@@ -33,6 +42,8 @@ export const BulkCompleteModal: React.FC<BulkCompleteModalProps> = ({
 
   const numVal = parseFloat(actualTonnes) || 0;
   const variance = Math.round((numVal - job.authorisedTonnes) * 100) / 100;
+  const isProblem = stoppage !== 'NONE';
+  const entryStatus: 'completed' | 'not completed' = isProblem ? 'not completed' : 'completed';
 
   const handleAdjust = (delta: number) => {
     const next = Math.max(0, Math.round((numVal + delta) * 100) / 100);
@@ -42,7 +53,7 @@ export const BulkCompleteModal: React.FC<BulkCompleteModalProps> = ({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (numVal <= 0) return;
-    onConfirmComplete(numVal);
+    onConfirmComplete(numVal, stoppage, entryStatus);
   };
 
   return (
@@ -59,13 +70,14 @@ export const BulkCompleteModal: React.FC<BulkCompleteModalProps> = ({
                 {language === 'ar' ? 'إتمام التحميل وتأكيد الوزن النهائي' : 'Complete Loading & Weigh-Out'}
               </h2>
               <p className="text-[11px] text-slate-400">
-                {silo.nameEn} · {job.truckNumber}
+                {silo?.nameEn || job.siloId} · {job.truckNumber}
               </p>
             </div>
           </div>
           <button
+            type="button"
             onClick={onClose}
-            className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white transition"
+            className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white transition cursor-pointer"
           >
             <X className="w-4 h-4" />
           </button>
@@ -107,7 +119,7 @@ export const BulkCompleteModal: React.FC<BulkCompleteModalProps> = ({
           <div className="bg-slate-950/70 border border-slate-800 rounded-2xl p-4 space-y-3">
             <div className="flex items-center justify-between">
               <label className="text-xs font-bold text-slate-200">
-                {language === 'ar' ? 'الوزن الفعلي المحمّل (طن)' : 'Actual Loaded Tonnes:'}
+                {language === 'ar' ? 'الوزن الفعلي المحمّل (طن):' : 'Actual Loaded Tonnes:'}
               </label>
               <span className="text-[11px] text-slate-400">
                 {language === 'ar' ? 'المصرح بالتذكرة:' : 'Authorised:'}{' '}
@@ -130,33 +142,33 @@ export const BulkCompleteModal: React.FC<BulkCompleteModalProps> = ({
               </span>
             </div>
 
-            {/* Touch Adjusters for Industrial Touchscreens */}
+            {/* Touch Adjusters for Touchscreens */}
             <div className="grid grid-cols-4 gap-1.5 pt-1">
               <button
                 type="button"
                 onClick={() => handleAdjust(-1)}
-                className="py-1.5 bg-slate-900 hover:bg-slate-800 border border-slate-800 rounded-xl text-xs font-mono font-bold text-slate-300"
+                className="py-1.5 bg-slate-900 hover:bg-slate-800 border border-slate-800 rounded-xl text-xs font-mono font-bold text-slate-300 cursor-pointer"
               >
                 -1.0 t
               </button>
               <button
                 type="button"
                 onClick={() => handleAdjust(-0.1)}
-                className="py-1.5 bg-slate-900 hover:bg-slate-800 border border-slate-800 rounded-xl text-xs font-mono font-bold text-slate-300"
+                className="py-1.5 bg-slate-900 hover:bg-slate-800 border border-slate-800 rounded-xl text-xs font-mono font-bold text-slate-300 cursor-pointer"
               >
                 -0.1 t
               </button>
               <button
                 type="button"
                 onClick={() => handleAdjust(0.1)}
-                className="py-1.5 bg-slate-900 hover:bg-slate-800 border border-slate-800 rounded-xl text-xs font-mono font-bold text-slate-300"
+                className="py-1.5 bg-slate-900 hover:bg-slate-800 border border-slate-800 rounded-xl text-xs font-mono font-bold text-slate-300 cursor-pointer"
               >
                 +0.1 t
               </button>
               <button
                 type="button"
                 onClick={() => handleAdjust(1)}
-                className="py-1.5 bg-slate-900 hover:bg-slate-800 border border-slate-800 rounded-xl text-xs font-mono font-bold text-slate-300"
+                className="py-1.5 bg-slate-900 hover:bg-slate-800 border border-slate-800 rounded-xl text-xs font-mono font-bold text-slate-300 cursor-pointer"
               >
                 +1.0 t
               </button>
@@ -175,19 +187,66 @@ export const BulkCompleteModal: React.FC<BulkCompleteModalProps> = ({
             )}
           </div>
 
+          {/* Compulsory Stoppage Selector matching Truck Entry */}
+          <div className="bg-slate-950/70 border border-slate-800 rounded-2xl p-3.5 space-y-2">
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-bold text-slate-200 flex items-center gap-1.5">
+                <AlertTriangle className="w-3.5 h-3.5 text-amber-400" />
+                <span>{language === 'ar' ? 'حالة التوقف / العطل (إلزامي)' : 'Stoppage Condition (Compulsory)'}</span>
+              </label>
+              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
+                isProblem
+                  ? 'bg-rose-950/60 text-rose-300 border-rose-700/60'
+                  : 'bg-emerald-950/60 text-emerald-300 border-emerald-700/60'
+              }`}>
+                {isProblem ? 'NOT COMPLETED' : 'COMPLETED'}
+              </span>
+            </div>
+
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+              {BULK_STOPPAGE_OPTIONS.map(st => {
+                const isSelected = stoppage === st;
+                return (
+                  <button
+                    key={st}
+                    type="button"
+                    onClick={() => setStoppage(st)}
+                    className={`py-2 px-1.5 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                      isSelected
+                        ? st === 'NONE'
+                          ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/30 ring-2 ring-emerald-400'
+                          : 'bg-rose-600 text-white shadow-md shadow-rose-600/30 ring-2 ring-rose-400'
+                        : 'bg-slate-900 border border-slate-800 text-slate-400 hover:bg-slate-850 hover:text-slate-200'
+                    }`}
+                  >
+                    {isSelected && <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />}
+                    <span>{st === 'MECHANICAL' ? 'MECHANICAL' : st}</span>
+                  </button>
+                );
+              })}
+            </div>
+            {isProblem && (
+              <p className="text-[11px] text-rose-300/90 pt-1 leading-snug">
+                {language === 'ar'
+                  ? 'سيتم تسجيل التحميل بحالة غير مكتمل (عطل) وحفظه في سجل الأعطال Google Sheets.'
+                  : 'Load will be marked as "not completed" and logged to Google Sheets Stoppage Log.'}
+              </p>
+            )}
+          </div>
+
           {/* Action Buttons */}
           <div className="flex items-center gap-2 pt-1">
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 py-3 rounded-xl bg-slate-800 hover:bg-slate-750 text-slate-300 font-bold text-xs transition"
+              className="flex-1 py-3 rounded-xl bg-slate-800 hover:bg-slate-750 text-slate-300 font-bold text-xs transition cursor-pointer"
             >
               {language === 'ar' ? 'إلغاء' : 'Cancel'}
             </button>
             <button
               type="submit"
               disabled={numVal <= 0}
-              className="flex-[2] py-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 text-white font-black text-xs transition shadow-lg shadow-emerald-600/20 active:scale-95 flex items-center justify-center gap-2"
+              className="flex-[2] py-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 text-white font-black text-xs transition shadow-lg shadow-emerald-600/20 active:scale-95 flex items-center justify-center gap-2 cursor-pointer"
             >
               <CheckCircle2 className="w-4 h-4" />
               <span>{language === 'ar' ? 'تأكيد الحفظ والإغلاق' : 'Save & Complete Load'}</span>

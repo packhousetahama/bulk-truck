@@ -202,6 +202,8 @@ export async function completeBulkLoaderRemote(params: {
   grossDurationMinutes?: number;
   netDurationMinutes?: number;
   downtimeMinutes?: number;
+  stoppage?: string;
+  status?: string;
 }): Promise<{ success: boolean; completedJob?: any; error?: string }> {
   const url = getBackendUrl();
   try {
@@ -313,9 +315,16 @@ export async function fetchBulkDashboardMetrics(): Promise<BulkDashboardMetrics 
 
 // --- AUTHENTICATION & USER MANAGEMENT ---
 const LOCAL_USERS_KEY = 'spcc_bulk_users_store';
+const USERS_STORE_VER = 'spcc_bulk_users_v2_2026';
 
 export function getUsers(): User[] {
   try {
+    const ver = localStorage.getItem('spcc_bulk_users_ver');
+    if (ver !== USERS_STORE_VER) {
+      localStorage.removeItem(LOCAL_USERS_KEY);
+      localStorage.setItem('spcc_bulk_users_ver', USERS_STORE_VER);
+      return DEFAULT_USERS;
+    }
     const raw = localStorage.getItem(LOCAL_USERS_KEY);
     if (raw) return JSON.parse(raw);
   } catch {}

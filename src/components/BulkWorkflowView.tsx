@@ -154,8 +154,13 @@ export const BulkWorkflowView: React.FC = () => {
     }
     if (!pendingTicket || !selectedSiloId) return;
 
-    if (isDuplicateReceipt && currentUser.role !== 'admin') {
-      showToast('Duplicate load blocked: Receipt already recorded or active.', 'error');
+    if (isDuplicateReceipt) {
+      showToast(
+        language === 'ar'
+          ? 'تم حظر التحميل: تذكرة مكررة مسجلة مسبقاً أو قيد التحميل حالياً'
+          : 'Duplicate load blocked: Receipt already recorded or active.',
+        'error'
+      );
       return;
     }
 
@@ -338,7 +343,7 @@ export const BulkWorkflowView: React.FC = () => {
       )}
 
       {/* 2. TICKET INTAKE: SCAN OR MANUAL ENTRY */}
-      {!pendingTicket && (
+      {!currentActiveJob && !pendingTicket && (
         <div className="bg-slate-900 border border-slate-800 rounded-3xl p-5 shadow-xl space-y-4">
           <div className="text-center space-y-1">
             <h2 className="text-base font-bold text-slate-100 tracking-tight">
@@ -516,11 +521,7 @@ export const BulkWorkflowView: React.FC = () => {
                     ? ` is currently actively loading on ${duplicateActive.siloId} by ${duplicateActive.operator}.`
                     : ' is a duplicate.'}
                 </p>
-                {currentUser?.role === 'admin' && (
-                  <p className="text-[11px] text-amber-300/90 pt-1">
-                    * Admin Privilege: You may review or modify parameters and proceed if this is an authorized re-dispatch.
-                  </p>
-                )}
+                
               </div>
             </div>
           )}
@@ -710,7 +711,7 @@ export const BulkWorkflowView: React.FC = () => {
           <div className="pt-2">
             <button
               type="button"
-              disabled={!selectedSiloId || (isDuplicateReceipt && currentUser?.role !== 'admin') || !currentUser}
+              disabled={!selectedSiloId || isDuplicateReceipt || !currentUser}
               onClick={handleStartLoading}
               className="w-full py-4 rounded-2xl bg-amber-500 hover:bg-amber-400 disabled:opacity-40 text-slate-950 font-black text-base shadow-xl shadow-amber-500/20 active:scale-98 transition flex items-center justify-center gap-2 cursor-pointer"
             >
@@ -718,6 +719,8 @@ export const BulkWorkflowView: React.FC = () => {
               <span>
                 {!currentUser
                   ? (language === 'ar' ? 'سجّل الدخول أولاً لبدء التحميل' : 'Sign In to Start Loading')
+                  : isDuplicateReceipt
+                  ? (language === 'ar' ? 'تذكرة مكررة - التحميل محظور' : 'Duplicate Receipt — Loading Blocked')
                   : selectedSiloId && BULK_SILOS[selectedSiloId]
                   ? language === 'ar'
                     ? `بدء التحميل من ${BULK_SILOS[selectedSiloId].nameAr}`
@@ -773,9 +776,9 @@ export const BulkWorkflowView: React.FC = () => {
           setIsCompleteModalOpen(false);
           setSelectedActiveSiloId(null);
         }}
-        onConfirmComplete={async (actualTonnes) => {
+        onConfirmComplete={async (actualTonnes, stoppageReason, status) => {
           if (selectedActiveSiloId) {
-            await completeJob(selectedActiveSiloId, actualTonnes);
+            await completeJob(selectedActiveSiloId, actualTonnes, stoppageReason, status);
           }
           setIsCompleteModalOpen(false);
           setSelectedActiveSiloId(null);
