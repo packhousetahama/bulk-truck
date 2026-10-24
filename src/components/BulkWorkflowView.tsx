@@ -11,6 +11,7 @@ import { BulkUserModal } from './BulkUserModal';
 import { formatElapsedSeconds } from '../utils/timeZone';
 import {
   Camera,
+  Loader2,
   Play,
   CheckCircle2,
   AlertTriangle,
@@ -68,6 +69,8 @@ export const BulkWorkflowView: React.FC = () => {
   const [selectedSiloId, setSelectedSiloId] = useState<BulkSiloId | null>(null);
   const [conflictResolutionNote, setConflictResolutionNote] = useState<string | undefined>(undefined);
   const [showAllSilos, setShowAllSilos] = useState(false);
+  const [allowForceReload, setAllowForceReload] = useState(false);
+  const [isStartingLoader, setIsStartingLoader] = useState(false);
 
   // Manual entry toggle
   const [showManualInputs, setShowManualInputs] = useState(false);
@@ -103,20 +106,22 @@ export const BulkWorkflowView: React.FC = () => {
       )
     : undefined;
 
-  // 2. Check if completed in recentEntries (excluding interrupted / not completed)
+  // 2. Check if completed in recentEntries (matching receipt OR loadId)
   const duplicateRecorded = cleanReceipt
-    ? (recentEntries || []).find(
-        (e: BulkEntry) =>
-          e &&
-          String(e.receiptNumber || '').trim().toUpperCase().replace(/^#+/, '').replace(/\s+/g, '') === cleanReceipt &&
-          String(e.status || '').trim().toLowerCase() === 'completed'
-      )
+    ? (recentEntries || []).find((e: BulkEntry) => {
+        if (!e) return false;
+        const eRec = String(e.receiptNumber || '').trim().toUpperCase().replace(/^#+/, '').replace(/\s+/g, '');
+        const eLoad = String((e as any).loadId || '').trim().toUpperCase();
+        const matches = (eRec === cleanReceipt) || (cleanReceipt.length >= 4 && eLoad.includes(cleanReceipt));
+        const isCompleted = String(e.status || '').trim().toLowerCase() === 'completed';
+        return matches && isCompleted;
+      })
     : undefined;
 
-  // If active on the SELECTED silo: it is NOT a duplicate block, it is the ongoing session to resume!
-  // If active on a DIFFERENT silo or already completed in sheet: it is a duplicate conflict
+  // If allowForceReload is true, duplicateRecorded does not block
   const isDuplicateReceipt = Boolean(
-    duplicateRecorded || (duplicateActive && selectedSiloId && duplicateActive.siloId !== selectedSiloId)
+    (duplicateRecorded && !allowForceReload) ||
+    (duplicateActive && selectedSiloId && duplicateActive.siloId !== selectedSiloId)
   );
 
   const isResumingSameSilo = Boolean(
@@ -187,26 +192,37 @@ export const BulkWorkflowView: React.FC = () => {
       setIsUserModalOpen(true);
       return;
     }
-    if (!pendingTicket || !selectedSiloId) return;
+    if (!pendingTicket || !selectedSiloId || isStartingLoader) return;
 
     if (isDuplicateReceipt) {
       showToast(
         language === 'ar'
           ? 'تم حظر التحميل: تذكرة مكررة مسجلة مسبقاً أو قيد التحميل حالياً'
-          : 'Duplicate load blocked: Receipt already recorded or active.',
+          : 'Duplicate load blocked: Receipt already recorded or active. Click "Reload Ticket" to re-load.',
         'error'
       );
       return;
     }
 
     const targetSilo = selectedSiloId;
-    const ok = await startJob(targetSilo, pendingTicket, conflictResolutionNote);
-    if (ok) {
-      setFocusedSiloId(targetSilo);
-      setShowIntakeForm(false);
-      setPendingTicket(null);
-      setSelectedSiloId(null);
-      setConflictResolutionNote(undefined);
+    setIsStartingLoader(true);
+    try {
+      const ok = await startJob(targetSilo, pendingTicket, conflictResolutionNote, allowForceReload);
+      if (ok) {
+        setFocusedSiloId(targetSilo);
+        setShowIntakeForm(false);
+        setPendingTicket(null);
+        setSelectedSiloId(null);
+        setConflictResolutionNote(undefined);
+        setAllowForceReload(false);
+      } else {
+        // If startJob failed due to duplicate, offer force reload
+        if (duplicateRecorded) {
+          setAllowForceReload(true);
+        }
+      }
+    } finally {
+      setIsStartingLoader(false);
     }
   };
 
@@ -860,6 +876,29 @@ export const BulkWorkflowView: React.FC = () => {
                     ? ` is currently actively loading on ${duplicateActive.siloId} by ${duplicateActive.operator}.`
                     : ' is a duplicate.'}
                 </p>
+                {duplicateRecorded && !allowForceReload && (
+                  <div className="pt-2 flex items-center gap-2 flex-wrap">
+                    <button
+                      type="button"
+                      onClick={() => setAllowForceReload(true)}
+                      className="px-3.5 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs transition shadow-md flex items-center gap-1.5 cursor-pointer active:scale-95"
+                    >
+                      <RotateCcw className="w-3.5 h-3.5" />
+                      <span>{language === 'ar' ? 'السماح بإعادة التحميل كتشغيل جديد' : 'Reload Ticket as New Run'}</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setPendingTicket(null);
+                        setSelectedSiloId(null);
+                        setAllowForceReload(false);
+                      }}
+                      className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold text-xs transition cursor-pointer"
+                    >
+                      {language === 'ar' ? 'مسح تذكرة أخرى' : 'Scan Different Ticket'}
+                    </button>
+                  </div>
+                )}
                 {duplicateActive && (
                   <div className="pt-1 flex items-center gap-2">
                     <button
@@ -1065,26 +1104,37 @@ export const BulkWorkflowView: React.FC = () => {
           <div className="pt-2">
             <button
               type="button"
-              disabled={!selectedSiloId || isDuplicateReceipt || !currentUser}
+              disabled={!selectedSiloId || isDuplicateReceipt || !currentUser || isStartingLoader}
               onClick={handleStartLoading}
               className="w-full py-4 rounded-2xl bg-amber-500 hover:bg-amber-400 disabled:opacity-40 text-slate-950 font-black text-base shadow-xl shadow-amber-500/20 active:scale-98 transition flex items-center justify-center gap-2 cursor-pointer"
             >
-              <Play className="w-5 h-5 fill-slate-950" />
-              <span>
-                {!currentUser
-                  ? (language === 'ar' ? 'سجّل الدخول أولاً لبدء التحميل' : 'Sign In to Start Loading')
-                  : isDuplicateReceipt
-                  ? (language === 'ar' ? 'تذكرة مكررة - التحميل محظور' : 'Duplicate Receipt — Loading Blocked')
-                  : isResumingSameSilo
-                  ? (language === 'ar' ? `استئناف التحميل من ${BULK_SILOS[selectedSiloId!].nameAr}` : `Resume Loading at ${BULK_SILOS[selectedSiloId!].nameEn}`)
-                  : selectedSiloId && BULK_SILOS[selectedSiloId]
-                  ? language === 'ar'
-                    ? `بدء التحميل من ${BULK_SILOS[selectedSiloId].nameAr}`
-                    : `Start Loading at ${BULK_SILOS[selectedSiloId].nameEn}`
-                  : language === 'ar'
-                  ? 'اختر صومعة للبدء'
-                  : 'Select an Authorised Silo to Start'}
-              </span>
+              {isStartingLoader ? (
+                <>
+                  <Loader2 className="w-5 h-5 animate-spin text-slate-950" />
+                  <span>{language === 'ar' ? 'جاري بدء الصومعة والتسجيل بالشيت...' : 'Starting Silo & Writing to Sheets...'}</span>
+                </>
+              ) : (
+                <>
+                  <Play className="w-5 h-5 fill-slate-950" />
+                  <span>
+                    {!currentUser
+                      ? (language === 'ar' ? 'سجّل الدخول أولاً لبدء التحميل' : 'Sign In to Start Loading')
+                      : isDuplicateReceipt
+                      ? (language === 'ar' ? 'تذكرة مكررة - التحميل محظور' : 'Duplicate Receipt — Loading Blocked')
+                      : allowForceReload && selectedSiloId && BULK_SILOS[selectedSiloId]
+                      ? (language === 'ar' ? `إعادة التحميل كتشغيل جديد على ${BULK_SILOS[selectedSiloId].nameAr}` : `Start Reload at ${BULK_SILOS[selectedSiloId].nameEn} (New Run)`)
+                      : isResumingSameSilo
+                      ? (language === 'ar' ? `استئناف التحميل من ${BULK_SILOS[selectedSiloId!].nameAr}` : `Resume Loading at ${BULK_SILOS[selectedSiloId!].nameEn}`)
+                      : selectedSiloId && BULK_SILOS[selectedSiloId]
+                      ? language === 'ar'
+                        ? `بدء التحميل من ${BULK_SILOS[selectedSiloId].nameAr}`
+                        : `Start Loading at ${BULK_SILOS[selectedSiloId].nameEn}`
+                      : language === 'ar'
+                      ? 'اختر صومعة للبدء'
+                      : 'Select an Authorised Silo to Start'}
+                  </span>
+                </>
+              )}
             </button>
           </div>
         </div>
@@ -1136,12 +1186,19 @@ export const BulkWorkflowView: React.FC = () => {
           if (selectedActiveSiloId) {
             const completedSilo = selectedActiveSiloId;
             await completeJob(completedSilo, actualTonnes, stoppageReason, status);
-            const remaining = activeSiloIds.filter(id => id !== completedSilo);
-            if (remaining.length > 0) {
-              setFocusedSiloId(remaining[0]);
-            } else {
-              setFocusedSiloId(null);
+            if (stoppageReason && stoppageReason !== 'NONE') {
+              // Stoppage problem: KEEP FOCUSED on this silo so operator sees active delay
+              setFocusedSiloId(completedSilo);
               setShowIntakeForm(false);
+            } else {
+              // Stoppage is NONE: finalized & completed! Free silo
+              const remaining = activeSiloIds.filter(id => id !== completedSilo);
+              if (remaining.length > 0) {
+                setFocusedSiloId(remaining[0]);
+              } else {
+                setFocusedSiloId(null);
+                setShowIntakeForm(false);
+              }
             }
           }
           setIsCompleteModalOpen(false);
