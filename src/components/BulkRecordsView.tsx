@@ -73,7 +73,6 @@ export const BulkRecordsView: React.FC = () => {
       'Net Minutes',
       'Operator',
       'Status',
-      'Conflict Resolved',
       'Comments'
     ];
 
@@ -94,7 +93,6 @@ export const BulkRecordsView: React.FC = () => {
       e.netDurationMinutes,
       e.operator,
       e.status,
-      e.conflictDetected ? 'Yes' : 'No',
       `"${(e.comments || '').replace(/"/g, '""')}"`
     ]);
 
