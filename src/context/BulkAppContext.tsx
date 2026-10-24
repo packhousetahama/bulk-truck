@@ -563,20 +563,52 @@ export const BulkAppProvider: React.FC<{ children: React.ReactNode }> = ({ child
       });
 
       if (!res.success) {
-        throw new Error(res.error || 'Failed to complete load on server');
+        throw new Error(res.error || 'Failed to update load on server');
       }
 
-      // Clear local state
-      setActiveJobs(prev => {
-        const copy = { ...prev };
-        delete copy[siloId];
-        return copy;
-      });
-      delete graceMap.current[siloId];
+      const isProblem = finalStoppage !== 'NONE';
 
-      refreshRecentEntries();
-      playSuccess();
-      showToast(`Loading complete! ${actualTonnes} tonnes dispatched for truck ${job.truckNumber}`, 'success');
+      if (isProblem) {
+        // Stoppage problem recorded: KEEP ACTIVE on silo, update status to STOPPAGE
+        setActiveJobs(prev => {
+          const existing = prev[siloId];
+          if (!existing) return prev;
+          return {
+            ...prev,
+            [siloId]: {
+              ...existing,
+              status: 'STOPPAGE',
+              stoppageReason: finalStoppage,
+              stoppageStartTime: existing.stoppageStartTime || getSaudiCurrentTimeOnly(),
+              stoppageStartEpochMs: existing.stoppageStartEpochMs || Date.now(),
+              authorisedTonnes: job.authorisedTonnes
+            }
+          };
+        });
+        showToast(
+          language === 'ar'
+            ? `تم حفظ العطل (${finalStoppage}) في الشيت كغير مكتمل. التحميل لا يزال قيد التنفيذ على ${BULK_SILOS[siloId].nameAr}.`
+            : `Stoppage (${finalStoppage}) saved to Google Sheets as "not completed". Loading session remains active on ${BULK_SILOS[siloId].nameEn}.`,
+          'warning'
+        );
+      } else {
+        // Stoppage is NONE: COMPLETED! Clear local state & free the silo
+        setActiveJobs(prev => {
+          const copy = { ...prev };
+          delete copy[siloId];
+          return copy;
+        });
+        delete graceMap.current[siloId];
+
+        refreshRecentEntries();
+        playSuccess();
+        showToast(
+          language === 'ar'
+            ? `اكتمل التحميل بنجاح! تم تسجيل ${actualTonnes} طن للشاحنة ${job.truckNumber}.`
+            : `Loading complete! ${actualTonnes} tonnes dispatched for truck ${job.truckNumber}.`,
+          'success'
+        );
+      }
       return true;
     } catch (err: any) {
       showToast(err.message || 'Error completing job', 'error');

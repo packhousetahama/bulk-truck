@@ -199,7 +199,7 @@ export const BulkCompleteModal: React.FC<BulkCompleteModalProps> = ({
                   ? 'bg-rose-950/60 text-rose-300 border-rose-700/60'
                   : 'bg-emerald-950/60 text-emerald-300 border-emerald-700/60'
               }`}>
-                {isProblem ? 'NOT COMPLETED' : 'COMPLETED'}
+                {isProblem ? 'NOT COMPLETED (KEEP ACTIVE)' : 'COMPLETED (FREE SILO)'}
               </span>
             </div>
 
@@ -225,11 +225,17 @@ export const BulkCompleteModal: React.FC<BulkCompleteModalProps> = ({
                 );
               })}
             </div>
-            {isProblem && (
+            {isProblem ? (
               <p className="text-[11px] text-rose-300/90 pt-1 leading-snug">
                 {language === 'ar'
-                  ? 'سيتم تسجيل التحميل بحالة غير مكتمل (عطل) وحفظه في سجل الأعطال Google Sheets.'
-                  : 'Load will be marked as "not completed" and logged to Google Sheets Stoppage Log.'}
+                  ? 'سيتم تسجيل التوقف في الشيت كـ "غير مكتمل". ستبقى الشاحنة في الصومعة حتى يتم حل العطل واختيار "NONE".'
+                  : 'Stoppage will be saved to Google Sheets as "not completed". This truck will remain active on the silo until marked as "NONE".'}
+              </p>
+            ) : (
+              <p className="text-[11px] text-emerald-300/90 pt-1 leading-snug">
+                {language === 'ar'
+                  ? 'سيتم إتمام الشحنة كـ "مكتملة" بنجاح، وتفريغ الصومعة للشاحنة التالية.'
+                  : 'Loading will be completed with status "completed" and this silo will be freed for the next dispatch.'}
               </p>
             )}
           </div>
@@ -246,10 +252,18 @@ export const BulkCompleteModal: React.FC<BulkCompleteModalProps> = ({
             <button
               type="submit"
               disabled={numVal <= 0}
-              className="flex-[2] py-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 text-white font-black text-xs transition shadow-lg shadow-emerald-600/20 active:scale-95 flex items-center justify-center gap-2 cursor-pointer"
+              className={`flex-[2] py-3 rounded-xl font-black text-xs transition shadow-lg active:scale-95 flex items-center justify-center gap-2 cursor-pointer ${
+                isProblem
+                  ? 'bg-rose-600 hover:bg-rose-500 shadow-rose-600/30 text-white'
+                  : 'bg-emerald-600 hover:bg-emerald-500 shadow-emerald-600/30 text-white'
+              }`}
             >
               <CheckCircle2 className="w-4 h-4" />
-              <span>{language === 'ar' ? 'تأكيد الحفظ والإغلاق' : 'Save & Complete Load'}</span>
+              <span>
+                {isProblem
+                  ? (language === 'ar' ? 'حفظ العطل في الشيت (إبقاء الجلسة نشطة)' : 'Save Stoppage to Sheet (Keep Active)')
+                  : (language === 'ar' ? 'إتمام التحميل وتفريغ الصومعة' : 'Complete & Weigh-Out (Free Silo)')}
+              </span>
             </button>
           </div>
         </form>
