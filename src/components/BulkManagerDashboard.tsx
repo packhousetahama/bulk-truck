@@ -19,7 +19,7 @@ import {
 } from 'lucide-react';
 
 export const BulkManagerDashboard: React.FC = () => {
-  const { language, activeJobs, activeNowMs, cancelJob, showToast, currentUser } = useBulkApp();
+  const { language, activeJobs, activeNowMs, cancelJob, showToast, currentUser, resetActiveLoaders } = useBulkApp();
   const [metrics, setMetrics] = useState<BulkDashboardMetrics | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -60,13 +60,30 @@ export const BulkManagerDashboard: React.FC = () => {
           </h2>
         </div>
 
-        <button
-          onClick={loadMetrics}
-          disabled={loading}
-          className="p-2 sm:p-2.5 rounded-xl bg-slate-950 hover:bg-slate-850 text-slate-400 hover:text-purple-400 border border-slate-850 transition active:scale-95 disabled:opacity-50 shrink-0 cursor-pointer"
-        >
-          <RotateCw className={`w-3.5 h-3.5 sm:w-4 sm:h-4 ${loading ? 'animate-spin text-purple-400' : ''}`} />
-        </button>
+        <div className="flex items-center gap-2">
+          {currentUser?.role === 'admin' && (
+            <button
+              type="button"
+              onClick={async () => {
+                if (confirm('Admin Action: Reset all active loaders and clear stuck sessions?')) {
+                  await resetActiveLoaders();
+                }
+              }}
+              className="px-2.5 py-1.5 rounded-xl bg-red-950/80 border border-red-700/80 text-red-300 hover:bg-red-900 font-bold text-xs flex items-center gap-1.5 transition active:scale-95 cursor-pointer"
+              title="Clear all active sessions across all 4 silos"
+            >
+              <XCircle className="w-3.5 h-3.5 text-red-400" />
+              <span>Reset All Loaders</span>
+            </button>
+          )}
+          <button
+            onClick={loadMetrics}
+            disabled={loading}
+            className="p-2 sm:p-2.5 rounded-xl bg-slate-950 hover:bg-slate-850 text-slate-400 hover:text-purple-400 border border-slate-850 transition active:scale-95 disabled:opacity-50 shrink-0 cursor-pointer"
+          >
+            <RotateCw className={`w-3.5 h-3.5 sm:w-4 sm:h-4 ${loading ? 'animate-spin text-purple-400' : ''}`} />
+          </button>
+        </div>
       </div>
 
       {/* Top Production KPIs */}

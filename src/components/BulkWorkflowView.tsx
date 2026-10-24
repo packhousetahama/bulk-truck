@@ -80,24 +80,35 @@ export const BulkWorkflowView: React.FC = () => {
 
   const currentActiveJob = userActiveSiloId ? activeJobs[userActiveSiloId] : null;
 
-  // Duplicate Check against active jobs and recorded entries
-  const currentReceiptNormalized = (pendingTicket?.receiptNumber || manualReceipt || '').trim().toUpperCase();
-  const duplicateActive = currentReceiptNormalized
+  // Canonical normalize helper
+  const cleanReceipt = (pendingTicket?.receiptNumber || manualReceipt || '').trim().toUpperCase().replace(/^#+/, '').replace(/\s+/g, '');
+
+  // 1. Check if actively loading on any silo
+  const duplicateActive = cleanReceipt
     ? Object.values(activeJobs).find(
-        j => j && j.receiptNumber.trim().toUpperCase() === currentReceiptNormalized
+        j => j && j.receiptNumber.trim().toUpperCase().replace(/^#+/, '').replace(/\s+/g, '') === cleanReceipt
       )
     : undefined;
 
-  const duplicateRecorded = currentReceiptNormalized
+  // 2. Check if completed in recentEntries (excluding interrupted / not completed)
+  const duplicateRecorded = cleanReceipt
     ? (recentEntries || []).find(
         (e: BulkEntry) =>
           e &&
-          String(e.receiptNumber || '').trim().toUpperCase() === currentReceiptNormalized &&
+          String(e.receiptNumber || '').trim().toUpperCase().replace(/^#+/, '').replace(/\s+/g, '') === cleanReceipt &&
           String(e.status || '').trim().toLowerCase() === 'completed'
       )
     : undefined;
 
-  const isDuplicateReceipt = !!(duplicateActive || duplicateRecorded);
+  // If active on the SELECTED silo: it is NOT a duplicate block, it is the ongoing session to resume!
+  // If active on a DIFFERENT silo or already completed in sheet: it is a duplicate conflict
+  const isDuplicateReceipt = Boolean(
+    duplicateRecorded || (duplicateActive && selectedSiloId && duplicateActive.siloId !== selectedSiloId)
+  );
+
+  const isResumingSameSilo = Boolean(
+    duplicateActive && selectedSiloId && duplicateActive.siloId === selectedSiloId
+  );
 
   const handleScanSuccess = (res: any) => {
     setIsScannerOpen(false);
@@ -781,6 +792,8 @@ export const BulkWorkflowView: React.FC = () => {
                   ? (language === 'ar' ? 'سجّل الدخول أولاً لبدء التحميل' : 'Sign In to Start Loading')
                   : isDuplicateReceipt
                   ? (language === 'ar' ? 'تذكرة مكررة - التحميل محظور' : 'Duplicate Receipt — Loading Blocked')
+                  : isResumingSameSilo
+                  ? (language === 'ar' ? `استئناف التحميل من ${BULK_SILOS[selectedSiloId!].nameAr}` : `Resume Loading at ${BULK_SILOS[selectedSiloId!].nameEn}`)
                   : selectedSiloId && BULK_SILOS[selectedSiloId]
                   ? language === 'ar'
                     ? `بدء التحميل من ${BULK_SILOS[selectedSiloId].nameAr}`

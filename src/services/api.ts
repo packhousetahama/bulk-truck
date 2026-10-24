@@ -82,6 +82,17 @@ export function normalizeActiveJob(raw: any, fallbackSiloId?: BulkSiloId): BulkA
   };
 }
 
+export async function resetActiveBulkLoadersRemote(): Promise<{ success: boolean; message?: string }> {
+  const url = `${getBackendUrl()}?action=resetActiveBulkLoaders&_t=${Date.now()}`;
+  try {
+    const res = await fetch(url);
+    const json = await res.json();
+    return { success: !!(json.ok || json.status === 'success'), message: json.message };
+  } catch (err: any) {
+    return { success: false, message: err.message };
+  }
+}
+
 export async function fetchActiveBulkLoaders(): Promise<Record<string, BulkActiveJob>> {
   const url = `${getBackendUrl()}?action=getActiveBulkLoaders&_t=${Date.now()}`;
   try {

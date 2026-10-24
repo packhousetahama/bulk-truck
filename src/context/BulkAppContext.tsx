@@ -16,6 +16,7 @@ import {
   resolveBulkStoppageRemote,
   completeBulkLoaderRemote,
   cancelBulkLoaderRemote,
+  resetActiveBulkLoadersRemote,
   submitBulkEntry,
   fetchBulkEntries,
   authenticateUser
@@ -48,6 +49,7 @@ interface BulkAppContextType {
   toast: { message: string; type: 'success' | 'error' | 'info' | 'warning' } | null;
   showToast: (message: string, type?: 'success' | 'error' | 'info' | 'warning') => void;
   refreshActiveJobs: () => Promise<void>;
+  resetActiveLoaders: () => Promise<boolean>;
   recentEntries: BulkEntry[];
   refreshRecentEntries: () => Promise<void>;
   playBeep: () => void;
@@ -618,6 +620,23 @@ export const BulkAppProvider: React.FC<{ children: React.ReactNode }> = ({ child
     }
   };
 
+  const resetActiveLoaders = async (): Promise<boolean> => {
+    setLoading(true);
+    try {
+      const res = await resetActiveBulkLoadersRemote();
+      if (res.success) {
+        setActiveJobs({});
+        graceMap.current = {};
+        showToast('All active bulk loaders have been reset and cleared.', 'success');
+        return true;
+      }
+      showToast(res.message || 'Failed to reset active loaders', 'error');
+      return false;
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const cancelJob = async (siloId: BulkSiloId, reason?: string): Promise<boolean> => {
     const job = activeJobs[siloId];
     if (!job) return false;
@@ -626,9 +645,9 @@ export const BulkAppProvider: React.FC<{ children: React.ReactNode }> = ({ child
       showToast('Authentication required: Please sign in.', 'error');
       return false;
     }
-    // Permission check: users can only cancel their own job, admin can cancel anyone
-    if (currentUser.role !== 'admin' && job.operator && job.operator.toLowerCase() !== currentUser.name.toLowerCase()) {
-      showToast('Permission denied: You can only cancel your own loading jobs. Contact an Admin.', 'error');
+    // Allow signed in operators to clear/cancel with confirmation
+    if (!currentUser) {
+      showToast('Authentication required: Please sign in.', 'error');
       return false;
     }
 
@@ -693,6 +712,7 @@ export const BulkAppProvider: React.FC<{ children: React.ReactNode }> = ({ child
         toast,
         showToast,
         refreshActiveJobs,
+        resetActiveLoaders,
         recentEntries,
         refreshRecentEntries,
         playBeep,
