@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useBulkApp } from '../context/BulkAppContext';
 import { BulkSiloId, BulkTicketData, CementType, BulkEntry } from '../types';
-import { BULK_SILOS } from '../utils/constants';
+import { BULK_SILOS, BULK_SILO_IDS, BULK_CEMENT_COMPATIBLE_SILOS } from '../utils/constants';
 import { BulkSiloSelector } from './BulkSiloSelector';
 import { BulkQRScannerModal } from './BulkQRScannerModal';
 import { BulkConflictModal } from './BulkConflictModal';
@@ -26,7 +26,12 @@ import {
   HelpCircle,
   AlertCircle,
   Ban,
-  Lock
+  Lock,
+  PlusCircle,
+  ArrowLeft,
+  Layers,
+  Activity,
+  Check
 } from 'lucide-react';
 
 export const BulkWorkflowView: React.FC = () => {
@@ -53,6 +58,11 @@ export const BulkWorkflowView: React.FC = () => {
   const [isCompleteModalOpen, setIsCompleteModalOpen] = useState(false);
   const [selectedActiveSiloId, setSelectedActiveSiloId] = useState<BulkSiloId | null>(null);
 
+  // Multi-silo state: which silo is currently focused in the active HUD
+  const [focusedSiloId, setFocusedSiloId] = useState<BulkSiloId | null>(null);
+  // Whether operator opened ticket intake to start another silo concurrently
+  const [showIntakeForm, setShowIntakeForm] = useState(false);
+
   // Scanned ticket in progress of review
   const [pendingTicket, setPendingTicket] = useState<BulkTicketData | null>(null);
   const [selectedSiloId, setSelectedSiloId] = useState<BulkSiloId | null>(null);
@@ -68,17 +78,20 @@ export const BulkWorkflowView: React.FC = () => {
   const [manualDriverName, setManualDriverName] = useState('');
   const [manualDriverPhone, setManualDriverPhone] = useState('');
 
-  // Find user's active jobs or any ongoing active jobs
-  const activeSiloIds = Object.keys(activeJobs) as BulkSiloId[];
-  const userActiveSiloId = activeSiloIds.find(
-    sId => {
-      const jobOp = String(activeJobs[sId]?.operator || '').toLowerCase();
-      const userOp = String(currentUser?.name || '').toLowerCase();
-      return jobOp && userOp && jobOp === userOp;
-    }
-  ) || activeSiloIds[0] || null;
+  // Active silos list
+  const activeSiloIds = (Object.keys(activeJobs) as BulkSiloId[]).filter(sId => Boolean(activeJobs[sId]));
+  const hasActiveJobs = activeSiloIds.length > 0;
 
-  const currentActiveJob = userActiveSiloId ? activeJobs[userActiveSiloId] : null;
+  // Determine which active job is currently displayed in HUD
+  const effectiveActiveSiloId: BulkSiloId | null = (focusedSiloId && activeJobs[focusedSiloId])
+    ? focusedSiloId
+    : (activeSiloIds.find(sId => {
+        const jobOp = String(activeJobs[sId]?.operator || '').toLowerCase();
+        const userOp = String(currentUser?.name || '').toLowerCase();
+        return jobOp && userOp && jobOp === userOp;
+      }) || activeSiloIds[0] || null);
+
+  const currentActiveJob = effectiveActiveSiloId ? activeJobs[effectiveActiveSiloId] : null;
 
   // Canonical normalize helper
   const cleanReceipt = (pendingTicket?.receiptNumber || manualReceipt || '').trim().toUpperCase().replace(/^#+/, '').replace(/\s+/g, '');
@@ -122,8 +135,11 @@ export const BulkWorkflowView: React.FC = () => {
     // If conflict detected, prompt conflict modal immediately
     if (ticket.conflictDetected) {
       setIsConflictModalOpen(true);
-    } else if (ticket.proposedSiloId) {
-      setSelectedSiloId(ticket.proposedSiloId);
+    } else {
+      // Auto-assign first available compatible silo!
+      const compSilos = BULK_CEMENT_COMPATIBLE_SILOS[ticket.cementType] || BULK_SILO_IDS;
+      const idleSilo = compSilos.find(sId => !activeJobs[sId]);
+      setSelectedSiloId(idleSilo || ticket.proposedSiloId || compSilos[0] || 'NEW_5');
     }
   };
 
@@ -155,10 +171,10 @@ export const BulkWorkflowView: React.FC = () => {
       driverPhone: manualDriverPhone.trim() || undefined,
     };
 
-    // Auto propose silo based on cement
-    if (manualCement === 'PPC') ticket.proposedSiloId = 'OLD_2';
-    else if (manualCement === 'GU') ticket.proposedSiloId = 'OLD_1';
-    else ticket.proposedSiloId = 'NEW_5';
+    // Auto propose silo based on cement, preferring idle silo
+    const compSilos = BULK_CEMENT_COMPATIBLE_SILOS[manualCement] || BULK_SILO_IDS;
+    const idleSilo = compSilos.find(sId => !activeJobs[sId]);
+    ticket.proposedSiloId = idleSilo || compSilos[0] || 'NEW_5';
 
     setPendingTicket(ticket);
     setSelectedSiloId(ticket.proposedSiloId);
@@ -183,8 +199,11 @@ export const BulkWorkflowView: React.FC = () => {
       return;
     }
 
-    const ok = await startJob(selectedSiloId, pendingTicket, conflictResolutionNote);
+    const targetSilo = selectedSiloId;
+    const ok = await startJob(targetSilo, pendingTicket, conflictResolutionNote);
     if (ok) {
+      setFocusedSiloId(targetSilo);
+      setShowIntakeForm(false);
       setPendingTicket(null);
       setSelectedSiloId(null);
       setConflictResolutionNote(undefined);
@@ -222,8 +241,218 @@ export const BulkWorkflowView: React.FC = () => {
         </div>
       )}
 
-      {/* 1. ACTIVE LOADING HUD (If an active job exists) */}
-      {currentActiveJob && (
+      {/* 1. LIVE MULTI-SILO COCKPIT (ALL 4 SILO STATIONS) */}
+      <div className="bg-slate-900 border border-slate-800 rounded-3xl p-4 sm:p-5 shadow-xl space-y-3">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Layers className="w-4 h-4 text-amber-400" />
+            <h2 className="text-xs font-black uppercase tracking-wider text-slate-200">
+              {language === 'ar' ? 'محطات وصوامع التحميل السائب' : 'Bulk Silo Loading Stations'}
+            </h2>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-[11px] font-mono font-bold px-2.5 py-0.5 rounded-full bg-slate-800 text-slate-300 border border-slate-700">
+              {activeSiloIds.length} / 4 {language === 'ar' ? 'قيد التحميل' : 'Active'}
+            </span>
+            {hasActiveJobs && activeSiloIds.length < 4 && !showIntakeForm && !pendingTicket && (
+              <button
+                type="button"
+                onClick={() => {
+                  if (!currentUser) {
+                    showToast(language === 'ar' ? 'يرجى تسجيل الدخول أولاً' : 'Authentication required: Please sign in first.', 'error');
+                    setIsUserModalOpen(true);
+                    return;
+                  }
+                  setShowIntakeForm(true);
+                }}
+                className="px-2.5 py-1 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-[11px] flex items-center gap-1 transition shadow-sm cursor-pointer"
+              >
+                <PlusCircle className="w-3 h-3" />
+                <span>{language === 'ar' ? '+ تحميل صومعة' : '+ Add Silo'}</span>
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* 4 Silo Cards Grid (2x2) */}
+        <div className="grid grid-cols-2 gap-2 sm:gap-2.5">
+          {BULK_SILO_IDS.map(sId => {
+            const silo = BULK_SILOS[sId];
+            const job = activeJobs[sId];
+            const isFocused = currentActiveJob && currentActiveJob.siloId === sId && !showIntakeForm && !pendingTicket;
+            const isRunning = Boolean(job && job.status !== 'STOPPAGE');
+            const isStopped = Boolean(job && job.status === 'STOPPAGE');
+
+            const elapsedSec = job
+              ? Math.max(0, Math.floor((activeNowMs - job.startEpochMs) / 1000))
+              : 0;
+
+            const downtimeSec = isStopped && job?.stoppageStartEpochMs
+              ? Math.max(0, Math.floor((activeNowMs - job.stoppageStartEpochMs) / 1000))
+              : 0;
+
+            return (
+              <div
+                key={sId}
+                onClick={() => {
+                  if (job) {
+                    // Focus on this active job's HUD
+                    setFocusedSiloId(sId);
+                    setShowIntakeForm(false);
+                    setPendingTicket(null);
+                  } else {
+                    // Idle silo clicked: open intake form pre-selecting this silo
+                    if (!currentUser) {
+                      showToast(language === 'ar' ? 'يرجى تسجيل الدخول أولاً' : 'Please sign in to start a load.', 'error');
+                      setIsUserModalOpen(true);
+                      return;
+                    }
+                    setSelectedSiloId(sId);
+                    setShowIntakeForm(true);
+                  }
+                }}
+                className={`p-3 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between min-h-[92px] ${
+                  isFocused
+                    ? 'bg-amber-950/30 border-amber-500 shadow-md ring-1 ring-amber-500/50'
+                    : job
+                    ? isStopped
+                      ? 'bg-red-950/20 border-red-500/60 hover:bg-red-950/30'
+                      : 'bg-slate-950/70 border-amber-500/50 hover:bg-slate-850'
+                    : 'bg-slate-950/40 border-slate-800 hover:border-slate-700 hover:bg-slate-900/60'
+                }`}
+              >
+                {/* Station & Cement Header */}
+                <div className="flex items-center justify-between gap-1">
+                  <div className="truncate">
+                    <span className="text-[10px] font-bold text-slate-400 block truncate">
+                      {silo.defaultStation}
+                    </span>
+                    <span className="text-xs font-black text-slate-100 truncate block">
+                      {silo.nameEn}
+                    </span>
+                  </div>
+                  <span className={`text-[9px] font-black px-1.5 py-0.5 rounded border uppercase shrink-0 ${
+                    silo.cementType === 'OPC'
+                      ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30'
+                      : silo.cementType === 'GU'
+                      ? 'bg-sky-500/20 text-sky-400 border-sky-500/30'
+                      : 'bg-amber-500/20 text-amber-400 border-amber-500/30'
+                  }`}>
+                    {silo.cementType}
+                  </span>
+                </div>
+
+                {/* Status & Live Timer */}
+                <div className="pt-2 border-t border-slate-800/80 mt-2 flex items-center justify-between">
+                  {job ? (
+                    isStopped ? (
+                      <div className="flex items-center gap-1.5 text-red-400">
+                        <AlertTriangle className="w-3 h-3 animate-pulse shrink-0" />
+                        <span className="text-[10px] font-black truncate">{job.stoppageReason || 'STOPPAGE'}</span>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-1.5 text-amber-400">
+                        <span className="w-2 h-2 rounded-full bg-amber-400 animate-ping shrink-0" />
+                        <span className="text-[10px] font-black">{language === 'ar' ? 'تحميل مباشر' : 'LOADING'}</span>
+                      </div>
+                    )
+                  ) : (
+                    <div className="flex items-center gap-1.5 text-emerald-400">
+                      <span className="w-2 h-2 rounded-full bg-emerald-400 shrink-0" />
+                      <span className="text-[10px] font-semibold">{language === 'ar' ? 'متاح' : 'Available'}</span>
+                    </div>
+                  )}
+
+                  {job ? (
+                    <span className="font-mono text-xs font-black text-slate-100">
+                      {isStopped ? formatElapsedSeconds(downtimeSec) : formatElapsedSeconds(elapsedSec)}
+                    </span>
+                  ) : (
+                    <span className="text-[10px] text-slate-500 font-bold hover:text-amber-400">
+                      {language === 'ar' ? '+ تحميل' : '+ Load'}
+                    </span>
+                  )}
+                </div>
+
+                {/* Truck Plate Subtext if active */}
+                {job && (
+                  <div className="mt-1 flex items-center justify-between text-[10px] text-slate-400 font-mono">
+                    <span className="truncate">{job.truckNumber}</span>
+                    <span className="text-amber-300">#{job.receiptNumber}</span>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* 2. MULTI-SILO QUICK SWITCHER TABS (When active jobs exist) */}
+      {hasActiveJobs && (
+        <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
+          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider shrink-0 pl-1">
+            {language === 'ar' ? 'الصوامع النشطة:' : 'Active Silos:'}
+          </span>
+          {activeSiloIds.map(sId => {
+            const job = activeJobs[sId];
+            if (!job) return null;
+            const isCurrent = effectiveActiveSiloId === sId && !showIntakeForm && !pendingTicket;
+            const isStopped = job.status === 'STOPPAGE';
+            const elapsed = Math.max(0, Math.floor((activeNowMs - job.startEpochMs) / 1000));
+
+            return (
+              <button
+                key={sId}
+                type="button"
+                onClick={() => {
+                  setFocusedSiloId(sId);
+                  setShowIntakeForm(false);
+                  setPendingTicket(null);
+                }}
+                className={`px-3 py-1.5 rounded-xl border text-xs font-bold transition flex items-center gap-2 shrink-0 cursor-pointer ${
+                  isCurrent
+                    ? 'bg-amber-500 text-slate-950 border-amber-400 shadow-md font-black'
+                    : isStopped
+                    ? 'bg-red-950/50 text-red-300 border-red-500/50 hover:bg-red-900/50'
+                    : 'bg-slate-900 text-slate-200 border-slate-800 hover:border-slate-700'
+                }`}
+              >
+                <span className={`w-2 h-2 rounded-full ${
+                  isCurrent ? 'bg-slate-950' : isStopped ? 'bg-red-400 animate-pulse' : 'bg-amber-400 animate-ping'
+                }`} />
+                <span>{BULK_SILOS[sId].nameEn}</span>
+                <span className="font-mono text-[11px] opacity-90">{formatElapsedSeconds(elapsed)}</span>
+              </button>
+            );
+          })}
+
+          {/* "+ Start Another Silo Load" Tab Button */}
+          {activeSiloIds.length < 4 && (
+            <button
+              type="button"
+              onClick={() => {
+                if (!currentUser) {
+                  showToast(language === 'ar' ? 'يرجى تسجيل الدخول أولاً' : 'Please sign in first.', 'error');
+                  setIsUserModalOpen(true);
+                  return;
+                }
+                setShowIntakeForm(true);
+              }}
+              className={`px-3 py-1.5 rounded-xl border text-xs font-bold transition flex items-center gap-1.5 shrink-0 cursor-pointer ${
+                showIntakeForm && !pendingTicket
+                  ? 'bg-amber-500/20 text-amber-300 border-amber-500/60 font-black'
+                  : 'bg-slate-900/80 text-amber-400 border-dashed border-amber-500/40 hover:bg-amber-500/10'
+              }`}
+            >
+              <PlusCircle className="w-3.5 h-3.5" />
+              <span>{language === 'ar' ? '+ بدء صومعة أخرى' : '+ Start Another Silo'}</span>
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* 3. ACTIVE LOADING HUD FOR CURRENT FOCUSED SILO */}
+      {currentActiveJob && !showIntakeForm && !pendingTicket && (
         <div className="bg-slate-900 border-2 border-amber-500/80 rounded-3xl p-5 shadow-2xl space-y-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
@@ -360,18 +589,51 @@ export const BulkWorkflowView: React.FC = () => {
               </button>
             </div>
 
+            {/* Start Another Silo Load Prompt in HUD (if other silos available) */}
+            {activeSiloIds.length < 4 && (
+              <div className="pt-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (!currentUser) {
+                      showToast(language === 'ar' ? 'يرجى تسجيل الدخول أولاً' : 'Please sign in first.', 'error');
+                      setIsUserModalOpen(true);
+                      return;
+                    }
+                    setShowIntakeForm(true);
+                  }}
+                  className="w-full py-2.5 rounded-xl bg-slate-950 hover:bg-slate-800 border border-slate-800 text-amber-400 font-bold text-xs transition flex items-center justify-center gap-2 cursor-pointer"
+                >
+                  <PlusCircle className="w-4 h-4" />
+                  <span>
+                    {language === 'ar'
+                      ? `+ مسح تذكرة وبدء صومعة أخرى (${4 - activeSiloIds.length} صوامع متاحة)`
+                      : `+ Start Another Truck on Available Silo (${4 - activeSiloIds.length} Available)`}
+                  </span>
+                </button>
+              </div>
+            )}
+
             {/* Cancel Load Link */}
             <div className="text-center pt-1">
               <button
                 type="button"
-                onClick={() => {
+                onClick={async () => {
                   if (!currentUser) {
                     showToast(language === 'ar' ? 'يرجى تسجيل الدخول أولاً' : 'Authentication required: Please sign in with your User ID and PIN.', 'error');
                     setIsUserModalOpen(true);
                     return;
                   }
                   if (confirm('Are you sure you want to cancel this bulk loading session?')) {
-                    cancelJob(currentActiveJob.siloId, 'Operator cancelled');
+                    const siloToCancel = currentActiveJob.siloId;
+                    await cancelJob(siloToCancel, 'Operator cancelled');
+                    const remaining = activeSiloIds.filter(id => id !== siloToCancel);
+                    if (remaining.length > 0) {
+                      setFocusedSiloId(remaining[0]);
+                    } else {
+                      setFocusedSiloId(null);
+                      setShowIntakeForm(false);
+                    }
                   }
                 }}
                 className="text-[11px] text-red-400/80 hover:text-red-300 underline font-semibold cursor-pointer"
@@ -383,9 +645,31 @@ export const BulkWorkflowView: React.FC = () => {
         </div>
       )}
 
-      {/* 2. TICKET INTAKE: SCAN OR MANUAL ENTRY */}
-      {!currentActiveJob && !pendingTicket && (
+      {/* 4. TICKET INTAKE: SCAN OR MANUAL ENTRY (Shown if no active job, or if user clicked to start another silo load) */}
+      {(showIntakeForm || !currentActiveJob) && !pendingTicket && (
         <div className="bg-slate-900 border border-slate-800 rounded-3xl p-5 shadow-xl space-y-4">
+          {/* Back to Active HUD Header if other jobs are running */}
+          {hasActiveJobs && (
+            <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+              <div className="flex items-center gap-2 text-xs text-amber-400">
+                <span className="w-2 h-2 rounded-full bg-amber-400 animate-ping" />
+                <span className="font-bold">
+                  {language === 'ar'
+                    ? `جاري تحميل ${activeSiloIds.length} صومعة في الخلفية`
+                    : `${activeSiloIds.length} Silo(s) Loading in Background`}
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowIntakeForm(false)}
+                className="text-xs text-slate-300 hover:text-white flex items-center gap-1 font-bold underline cursor-pointer"
+              >
+                <ArrowLeft className="w-3.5 h-3.5" />
+                <span>{language === 'ar' ? 'العودة للصومعة النشطة' : 'Back to Active Load'}</span>
+              </button>
+            </div>
+          )}
+
           <div className="text-center space-y-1">
             <h2 className="text-base font-bold text-slate-100 tracking-tight">
               {language === 'ar' ? 'بدء شحنة جديدة' : 'Start New Bulk Dispatch'}
@@ -528,7 +812,7 @@ export const BulkWorkflowView: React.FC = () => {
         </div>
       )}
 
-      {/* 3. TICKET REVIEW & EDITABLE BOXES (Matching Truck-Entry design) */}
+      {/* 5. TICKET REVIEW & EDITABLE BOXES */}
       {pendingTicket && (
         <div className="bg-slate-900 border border-slate-800 rounded-3xl p-5 shadow-2xl space-y-4">
           <div className="flex items-center justify-between border-b border-slate-800 pb-3">
@@ -553,7 +837,7 @@ export const BulkWorkflowView: React.FC = () => {
             </button>
           </div>
 
-          {/* DUPLICATE RECEIPT WARNING BANNER (Matching Truck-Entry Ban Banner) */}
+          {/* DUPLICATE RECEIPT WARNING BANNER */}
           {isDuplicateReceipt && (
             <div className="p-4 rounded-2xl bg-red-950/80 border-2 border-red-500/80 flex items-start gap-3 text-xs text-red-200 shadow-xl shadow-red-950/50 animate-in fade-in">
               <div className="p-2 rounded-xl bg-red-900/80 text-red-300 shrink-0 mt-0.5">
@@ -592,7 +876,6 @@ export const BulkWorkflowView: React.FC = () => {
                     </button>
                   </div>
                 )}
-                
               </div>
             </div>
           )}
@@ -619,9 +902,9 @@ export const BulkWorkflowView: React.FC = () => {
                       type="button"
                       onClick={() => {
                         setPendingTicket(prev => prev ? { ...prev, cementType: lbl } : null);
-                        if (lbl === 'PPC') setSelectedSiloId('OLD_2');
-                        else if (lbl === 'GU') setSelectedSiloId('OLD_1');
-                        else setSelectedSiloId('NEW_5');
+                        const compSilos = BULK_CEMENT_COMPATIBLE_SILOS[lbl] || BULK_SILO_IDS;
+                        const idleSilo = compSilos.find(sId => !activeJobs[sId]);
+                        setSelectedSiloId(idleSilo || compSilos[0] || 'NEW_5');
                       }}
                       className={`text-[10px] font-black px-2.5 py-1 rounded-full border transition-all cursor-pointer ${
                         isSel
@@ -659,7 +942,7 @@ export const BulkWorkflowView: React.FC = () => {
               </span>
             </div>
 
-            {/* Editable Fields Grid (2 Columns, matching Truck Entry form boxes) */}
+            {/* Editable Fields Grid */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
               {/* Vehicle Number (Editable) */}
               <div>
@@ -851,7 +1134,15 @@ export const BulkWorkflowView: React.FC = () => {
         }}
         onConfirmComplete={async (actualTonnes, stoppageReason, status) => {
           if (selectedActiveSiloId) {
-            await completeJob(selectedActiveSiloId, actualTonnes, stoppageReason, status);
+            const completedSilo = selectedActiveSiloId;
+            await completeJob(completedSilo, actualTonnes, stoppageReason, status);
+            const remaining = activeSiloIds.filter(id => id !== completedSilo);
+            if (remaining.length > 0) {
+              setFocusedSiloId(remaining[0]);
+            } else {
+              setFocusedSiloId(null);
+              setShowIntakeForm(false);
+            }
           }
           setIsCompleteModalOpen(false);
           setSelectedActiveSiloId(null);
