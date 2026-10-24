@@ -18,7 +18,7 @@ import {
 } from 'lucide-react';
 
 const BulkAppContent: React.FC = () => {
-  const { activeTab, toast, language } = useBulkApp();
+  const { activeTab, toast, language, showToast } = useBulkApp();
   const [isUserModalOpen, setIsUserModalOpen] = useState(false);
   const [canInstall, setCanInstall] = useState(false);
   const [showIosModal, setShowIosModal] = useState(false);
@@ -95,25 +95,35 @@ const BulkAppContent: React.FC = () => {
         {activeTab === 'manager' && <BulkManagerDashboard />}
       </main>
 
-      {/* Toast Notification Container */}
+      {/* Toast Notification Container - Top Floating Mobile Safe Area */}
       {toast && (
-        <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 w-11/12 max-w-md animate-slide-up">
+        <div className="fixed top-4 sm:top-5 left-1/2 -translate-x-1/2 z-[100] w-[calc(100%-1.5rem)] max-w-md pt-[env(safe-area-inset-top,0px)] animate-slide-down">
           <div
-            className={`px-4 py-3 rounded-2xl shadow-2xl border text-xs font-bold flex items-center gap-2.5 backdrop-blur-md ${
+            className={`px-4 py-3.5 rounded-2xl shadow-2xl border text-xs font-bold flex items-center justify-between gap-3 backdrop-blur-md ${
               toast.type === 'success'
-                ? 'bg-emerald-950/90 text-emerald-300 border-emerald-500/50'
+                ? 'bg-emerald-950/95 text-emerald-200 border-emerald-500/60 shadow-emerald-950/60'
                 : toast.type === 'error'
-                ? 'bg-red-950/90 text-red-300 border-red-500/50'
+                ? 'bg-red-950/95 text-red-200 border-red-500/60 shadow-red-950/60'
                 : toast.type === 'warning'
-                ? 'bg-amber-950/90 text-amber-300 border-amber-500/50'
-                : 'bg-slate-900/90 text-slate-200 border-slate-700'
+                ? 'bg-amber-950/95 text-amber-200 border-amber-500/60 shadow-amber-950/60'
+                : 'bg-slate-900/95 text-slate-100 border-slate-700 shadow-slate-950/60'
             }`}
           >
-            {toast.type === 'success' && <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />}
-            {toast.type === 'error' && <AlertCircle className="w-4 h-4 text-red-400 shrink-0" />}
-            {toast.type === 'warning' && <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0" />}
-            {toast.type === 'info' && <Info className="w-4 h-4 text-sky-400 shrink-0" />}
-            <span className="flex-1">{toast.message}</span>
+            <div className="flex items-center gap-2.5 min-w-0 flex-1">
+              {toast.type === 'success' && <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0" />}
+              {toast.type === 'error' && <AlertCircle className="w-5 h-5 text-red-400 shrink-0" />}
+              {toast.type === 'warning' && <AlertTriangle className="w-5 h-5 text-amber-400 shrink-0" />}
+              {toast.type === 'info' && <Info className="w-5 h-5 text-sky-400 shrink-0" />}
+              <span className="flex-1 text-xs font-semibold leading-relaxed break-words">{toast.message}</span>
+            </div>
+            <button
+              type="button"
+              onClick={() => showToast('', 'info')}
+              className="p-1 rounded-lg text-slate-400 hover:text-white shrink-0 cursor-pointer"
+              title="Dismiss"
+            >
+              <X className="w-4 h-4" />
+            </button>
           </div>
         </div>
       )}

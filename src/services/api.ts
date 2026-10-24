@@ -135,11 +135,11 @@ export async function startBulkLoaderRemote(params: {
       })
     });
     const json = await res.json();
-    if (json.status === 'success') {
+    if (json.ok || json.status === 'success' || json.success) {
       const normalizedJob = json.job ? normalizeActiveJob(json.job) : undefined;
       return { success: true, job: normalizedJob || json.job };
     }
-    return { success: false, error: json.message || 'Failed to start bulk loader' };
+    return { success: false, error: json.error || json.message || 'Failed to start bulk loader' };
   } catch (err: any) {
     return { success: false, error: err.message || 'Network error' };
   }
@@ -168,11 +168,11 @@ export async function reportBulkStoppageRemote(params: {
       })
     });
     const json = await res.json();
-    if (json.status === 'success') {
+    if (json.ok || json.status === 'success' || json.success) {
       const normalizedJob = json.job ? normalizeActiveJob(json.job) : undefined;
       return { success: true, job: normalizedJob || json.job };
     }
-    return { success: false, error: json.message || 'Failed to report stoppage' };
+    return { success: false, error: json.error || json.message || 'Failed to report stoppage' };
   } catch (err: any) {
     return { success: false, error: err.message || 'Network error' };
   }
@@ -200,11 +200,11 @@ export async function resolveBulkStoppageRemote(params: {
       })
     });
     const json = await res.json();
-    if (json.status === 'success') {
+    if (json.ok || json.status === 'success' || json.success) {
       const normalizedJob = json.job ? normalizeActiveJob(json.job) : undefined;
       return { success: true, job: normalizedJob || json.job };
     }
-    return { success: false, error: json.message || 'Failed to resolve stoppage' };
+    return { success: false, error: json.error || json.message || 'Failed to resolve stoppage' };
   } catch (err: any) {
     return { success: false, error: err.message || 'Network error' };
   }
@@ -241,10 +241,10 @@ export async function completeBulkLoaderRemote(params: {
       })
     });
     const json = await res.json();
-    if (json.status === 'success') {
-      return { success: true, completedJob: json.completedJob };
+    if (json.ok || json.status === 'success' || json.success) {
+      return { success: true, completedJob: json.completedJob || json };
     }
-    return { success: false, error: json.message || 'Failed to complete loader' };
+    return { success: false, error: json.error || json.message || 'Failed to complete loader' };
   } catch (err: any) {
     return { success: false, error: err.message || 'Network error' };
   }
@@ -273,7 +273,7 @@ export async function cancelBulkLoaderRemote(params: {
       })
     });
     const json = await res.json();
-    return { success: json.status === 'success', error: json.message };
+    return { success: !!(json.ok || json.status === 'success' || json.success), error: json.error || json.message };
   } catch (err: any) {
     return { success: false, error: err.message || 'Network error' };
   }

@@ -392,6 +392,13 @@ export const BulkAppProvider: React.FC<{ children: React.ReactNode }> = ({ child
       });
 
       if (!res.success) {
+        // Rollback optimistic state immediately
+        setActiveJobs(prev => {
+          const copy = { ...prev };
+          delete copy[siloId];
+          return copy;
+        });
+        delete graceMap.current[siloId];
         showToast(res.error || 'Failed to start loader', 'error');
         return false;
       }
@@ -400,6 +407,12 @@ export const BulkAppProvider: React.FC<{ children: React.ReactNode }> = ({ child
       showToast(`Loading started on ${BULK_SILOS[siloId].nameEn} for truck ${ticket.vehicleNumber}`, 'success');
       return true;
     } catch (err: any) {
+      setActiveJobs(prev => {
+        const copy = { ...prev };
+        delete copy[siloId];
+        return copy;
+      });
+      delete graceMap.current[siloId];
       showToast(err.message || 'Error starting load', 'error');
       return false;
     } finally {
