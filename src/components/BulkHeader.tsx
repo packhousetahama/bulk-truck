@@ -14,6 +14,7 @@ import {
   Layers,
   Clock,
   Shield,
+  Lock,
   BarChart3,
   ExternalLink,
   FileSpreadsheet
@@ -127,19 +128,32 @@ export const BulkHeader: React.FC<BulkHeaderProps> = ({ onOpenUserModal }) => {
               {theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
             </button>
 
-            {/* User Profile Pill */}
-            <button
-              onClick={onOpenUserModal}
-              className="flex items-center gap-1.5 bg-slate-900 hover:bg-slate-850 border border-slate-800 hover:border-amber-500/40 px-2.5 py-1.5 rounded-xl text-xs transition active:scale-95"
-            >
-              <div className={`w-2 h-2 rounded-full ${currentUser.role === 'admin' ? 'bg-purple-400' : 'bg-emerald-400'}`} />
-              <span className="font-bold text-slate-200 max-w-[80px] sm:max-w-none truncate">
-                {currentUser.name}
-              </span>
-              {currentUser.role === 'admin' && (
-                <Shield className="w-3 h-3 text-purple-400" />
-              )}
-            </button>
+            {/* User Profile Pill / Sign In Button */}
+            {currentUser ? (
+              <button
+                onClick={onOpenUserModal}
+                className="flex items-center gap-1.5 bg-slate-900 hover:bg-slate-850 border border-slate-800 hover:border-amber-500/40 px-2.5 py-1.5 rounded-xl text-xs transition active:scale-95 cursor-pointer"
+              >
+                <div className={`w-2 h-2 rounded-full ${currentUser?.role === 'admin' ? 'bg-purple-400' : 'bg-emerald-400'}`} />
+                <span className="font-bold text-slate-200 max-w-[80px] sm:max-w-none truncate">
+                  {currentUser.name}
+                </span>
+                <span className="hidden xs:inline text-[9px] font-mono px-1.5 py-0.5 rounded bg-slate-800 text-slate-400 uppercase">
+                  {currentUser.role}
+                </span>
+                {currentUser?.role === 'admin' && (
+                  <Shield className="w-3 h-3 text-purple-400" />
+                )}
+              </button>
+            ) : (
+              <button
+                onClick={onOpenUserModal}
+                className="h-8 sm:h-9 px-3 sm:px-3.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-black shadow-md transition-all active:scale-95 cursor-pointer flex items-center gap-1.5"
+              >
+                <Lock className="w-3.5 h-3.5" />
+                <span>{language === 'ar' ? 'تسجيل الدخول' : 'Sign In'}</span>
+              </button>
+            )}
           </div>
         </div>
 
@@ -170,7 +184,7 @@ export const BulkHeader: React.FC<BulkHeaderProps> = ({ onOpenUserModal }) => {
               <span>{t('records')}</span>
             </button>
 
-            {currentUser.role === 'admin' && (
+            {currentUser?.role === 'admin' && (
               <button
                 onClick={() => setActiveTab('manager')}
                 className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 ${

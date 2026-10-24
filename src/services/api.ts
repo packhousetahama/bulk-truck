@@ -4,9 +4,10 @@ import {
   BulkEntry,
   BulkDashboardMetrics,
   BulkQRVariant,
-  CementType
+  CementType,
+  User
 } from '../types';
-import { BULK_BACKEND_URL } from '../utils/constants';
+import { BULK_BACKEND_URL, DEFAULT_USERS } from '../utils/constants';
 
 function getBackendUrl(): string {
   try {
@@ -308,4 +309,147 @@ export async function fetchBulkDashboardMetrics(): Promise<BulkDashboardMetrics 
     console.warn('fetchBulkDashboardMetrics error:', err);
   }
   return null;
+}
+
+// --- AUTHENTICATION & USER MANAGEMENT ---
+const LOCAL_USERS_KEY = 'spcc_bulk_users_store';
+
+export function getUsers(): User[] {
+  try {
+    const raw = localStorage.getItem(LOCAL_USERS_KEY);
+    if (raw) return JSON.parse(raw);
+  } catch {}
+  return DEFAULT_USERS;
+}
+
+export function saveUsers(users: User[]) {
+  try {
+    localStorage.setItem(LOCAL_USERS_KEY, JSON.stringify(users));
+  } catch {}
+}
+
+export async function authenticateUser(userId: string, pin: string): Promise<{ success: boolean; user?: User; message?: string }> {
+  const cleanId = String(userId || '').trim();
+  const cleanPin = String(pin || '').trim();
+  if (!cleanId || !cleanPin) {
+    return { success: false, message: 'Please provide both User ID and PIN.' };
+  }
+
+  // 1. Try server-side authentication if backend is accessible
+  const url = getBackendUrl();
+  if (url && url.startsWith('http')) {
+    try {
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify({ action: 'login', id: cleanId, pin: cleanPin })
+      });
+      const data = await res.json();
+      if (data.ok && data.user) {
+        const user: User = {
+          id: data.user.id || cleanId.toLowerCase(),
+          name: data.user.name || cleanId,
+          role: data.user.role || 'user',
+          pin: cleanPin,
+          enabled: true
+        };
+        return { success: true, user };
+      }
+      if (data.error || data.message) {
+        return { success: false, message: data.error || data.message };
+      }
+    } catch (err) {
+      console.warn('Backend authentication failed or offline, checking local credentials:', err);
+    }
+  }
+
+  // 2. Local fallback verification
+  const users = getUsers();
+  const lowerId = cleanId.toLowerCase();
+  const normKey = lowerId.replace(/[\s._-]+/g, '');
+
+  const matched = users.find(u => {
+    const uId = (u.id || '').toLowerCase();
+    const uName = (u.name || '').toLowerCase();
+    return (
+      uId === lowerId ||
+      uName === lowerId ||
+      uId.replace(/[\s._-]+/g, '') === normKey ||
+      uName.replace(/[\s._-]+/g, '') === normKey
+    );
+  });
+
+  if (!matched) {
+    return { success: false, message: 'User ID not found' };
+  }
+  if (matched.enabled === false) {
+    return { success: false, message: 'This account has been deactivated by an administrator' };
+  }
+  if (matched.pin !== cleanPin) {
+    return { success: false, message: 'Incorrect PIN / Password' };
+  }
+
+  return {
+    success: true,
+    user: {
+      id: matched.id || lowerId,
+      name: matched.name,
+      role: matched.role,
+      pin: cleanPin,
+      enabled: true
+    }
+  };
+}
+
+export async function adminSaveUser(adminUser: User, targetId: string, displayName: string, role: 'admin' | 'user', newPin: string): Promise<{ success: boolean; message?: string }> {
+  const url = getBackendUrl();
+  try {
+    await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({
+        action: 'saveAppUser',
+        id: adminUser.id || adminUser.name,
+        pin: adminUser.pin || 'Jaw@red',
+        targetId,
+        displayName,
+        role,
+        newPin
+      })
+    });
+  } catch (e) {
+    console.warn('Remote user save failed, saving locally:', e);
+  }
+
+  const list = getUsers();
+  const idx = list.findIndex(u => (u.id || '').toLowerCase() === targetId.toLowerCase());
+  if (idx >= 0) {
+    list[idx] = { ...list[idx], name: displayName, role, pin: newPin, enabled: true };
+  } else {
+    list.push({ id: targetId, name: displayName, role, pin: newPin, enabled: true });
+  }
+  saveUsers(list);
+  return { success: true };
+}
+
+export async function adminDeleteUser(adminUser: User, targetId: string): Promise<{ success: boolean; message?: string }> {
+  const url = getBackendUrl();
+  try {
+    await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({
+        action: 'deleteAppUser',
+        id: adminUser.id || adminUser.name,
+        pin: adminUser.pin || 'Jaw@red',
+        targetId
+      })
+    });
+  } catch (e) {
+    console.warn('Remote user delete failed, deleting locally:', e);
+  }
+
+  const list = getUsers().filter(u => (u.id || '').toLowerCase() !== targetId.toLowerCase());
+  saveUsers(list);
+  return { success: true };
 }

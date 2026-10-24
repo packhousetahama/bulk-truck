@@ -1,4 +1,4 @@
-import { BulkSiloId, BulkSiloConfig, CementType } from '../types';
+import { BulkSiloId, BulkSiloConfig, CementType, User } from '../types';
 
 export const BULK_BACKEND_URL =
   'https://script.google.com/macros/s/AKfycbwU3YZMMInR7_k8_WFTIqv-BDg5sR525AFJaUwpjAl_svkDgFIg_1eQ9227UQPjIZ6qQA/exec';
@@ -87,8 +87,29 @@ export const BULK_STOPPAGE_REASONS: StoppageReasonOption[] = [
 export const BULK_SHEET_URL =
   'https://docs.google.com/spreadsheets/d/13WBpFJEtwXWu7bpet_4QTsqOn3DUaA9Ls9lXQ3YUW_Q/edit?gid=919326575';
 
+// Pre-configured users with credentials (Admin + 6 Confirmed Operators + Legacy)
+export const DEFAULT_USERS: User[] = [
+  { id: 'admin', name: 'System Administrator', role: 'admin', enabled: true, pin: 'Jaw@red' },
+  { id: 'supervisor', name: 'Shift Supervisor', role: 'admin', enabled: true, pin: 'Jaw@red' },
+  { id: 'ali_garni', name: 'Ali Garni', role: 'user', enabled: true, pin: '1234' },
+  { id: 'gulam_rabani', name: 'Gulam Rabani', role: 'user', enabled: true, pin: '1234' },
+  { id: 'siddiq_shari', name: 'Siddiq Shari', role: 'user', enabled: true, pin: '1234' },
+  { id: 'siddiq_ansari', name: 'Siddiq Ansari', role: 'user', enabled: true, pin: '1234' },
+  { id: 'ahmed_nasir', name: 'Ahmed Nasir', role: 'user', enabled: true, pin: '1234' },
+  { id: 'ali_arthi', name: 'Ali Arthi', role: 'user', enabled: true, pin: '1234' },
+  // Historical operators
+  { id: 'hasani', name: 'HASANI', role: 'user', enabled: true, pin: '112233' },
+  { id: 'naif', name: 'NAIF', role: 'user', enabled: true, pin: '112234' },
+  { id: 'abdulla', name: 'ABDULLA', role: 'user', enabled: true, pin: '112236' },
+  { id: 'gasim', name: 'GASIM', role: 'user', enabled: true, pin: '112237' },
+  { id: 'abu_niyaz', name: 'ABU NIYAZ', role: 'user', enabled: true, pin: '112238' },
+  { id: 'dede', name: 'DEDE', role: 'user', enabled: true, pin: '112239' },
+  { id: 'ayoub', name: 'AYOUB', role: 'user', enabled: true, pin: '112241' },
+  { id: 'dvs_reddy', name: 'D. V. S REDDY', role: 'user', enabled: true, pin: '112243' }
+];
+
 export const DEFAULT_OPERATORS = [
-  { id: 'admin', name: 'Admin', role: 'admin' as const },
+  { id: 'admin', name: 'System Administrator', role: 'admin' as const },
   { id: 'ali_garni', name: 'Ali Garni', role: 'user' as const },
   { id: 'gulam_rabani', name: 'Gulam Rabani', role: 'user' as const },
   { id: 'siddiq_shari', name: 'Siddiq Shari', role: 'user' as const },

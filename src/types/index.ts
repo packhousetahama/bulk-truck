@@ -125,8 +125,11 @@ export interface BulkDashboardMetrics {
 }
 
 export interface User {
+  id?: string;
   name: string;
   role: 'admin' | 'user';
+  pin?: string;
+  enabled?: boolean;
   plant?: string;
 }
 

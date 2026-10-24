@@ -7,6 +7,7 @@ import { BulkQRScannerModal } from './BulkQRScannerModal';
 import { BulkConflictModal } from './BulkConflictModal';
 import { BulkStoppageModal } from './BulkStoppageModal';
 import { BulkCompleteModal } from './BulkCompleteModal';
+import { BulkUserModal } from './BulkUserModal';
 import { formatElapsedSeconds } from '../utils/timeZone';
 import {
   Camera,
@@ -24,7 +25,8 @@ import {
   XCircle,
   HelpCircle,
   AlertCircle,
-  Ban
+  Ban,
+  Lock
 } from 'lucide-react';
 
 export const BulkWorkflowView: React.FC = () => {
@@ -45,6 +47,7 @@ export const BulkWorkflowView: React.FC = () => {
 
   // Modals state
   const [isScannerOpen, setIsScannerOpen] = useState(false);
+  const [isUserModalOpen, setIsUserModalOpen] = useState(false);
   const [isConflictModalOpen, setIsConflictModalOpen] = useState(false);
   const [isStoppageModalOpen, setIsStoppageModalOpen] = useState(false);
   const [isCompleteModalOpen, setIsCompleteModalOpen] = useState(false);
@@ -146,6 +149,11 @@ export const BulkWorkflowView: React.FC = () => {
   };
 
   const handleStartLoading = async () => {
+    if (!currentUser) {
+      showToast(language === 'ar' ? 'يرجى تسجيل الدخول أولاً' : 'Please sign in with your User ID and PIN before starting a load.', 'error');
+      setIsUserModalOpen(true);
+      return;
+    }
     if (!pendingTicket || !selectedSiloId) return;
 
     if (isDuplicateReceipt && currentUser.role !== 'admin') {
@@ -163,6 +171,35 @@ export const BulkWorkflowView: React.FC = () => {
 
   return (
     <div className="w-full max-w-2xl mx-auto space-y-4 pb-20">
+      {/* 0. AUTHENTICATION REQUIRED PROMPT */}
+      {!currentUser && (
+        <div className="bg-amber-950/60 border border-amber-500/60 rounded-3xl p-4 sm:p-5 flex items-center justify-between gap-3 text-xs text-amber-200 shadow-xl">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-2xl bg-amber-500/20 text-amber-400 flex items-center justify-center shrink-0">
+              <Lock className="w-5 h-5" />
+            </div>
+            <div>
+              <span className="font-bold text-amber-100 block text-sm">
+                {language === 'ar' ? 'تسجيل الدخول مطلوب للبدء بالتحميل' : 'Operator Authentication Required'}
+              </span>
+              <p className="text-[11px] text-amber-300/80 mt-0.5 leading-relaxed">
+                {language === 'ar'
+                  ? 'يرجى تسجيل الدخول برقم المشغل ورمز المرور للبدء بالتحميل أو تعديل البيانات.'
+                  : 'Please sign in with your User ID and Security PIN before starting or operating bulk loads.'}
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => setIsUserModalOpen(true)}
+            className="px-4 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs transition shadow-md shrink-0 cursor-pointer flex items-center gap-1.5"
+          >
+            <Lock className="w-3.5 h-3.5" />
+            <span>{language === 'ar' ? 'تسجيل الدخول' : 'Sign In'}</span>
+          </button>
+        </div>
+      )}
+
       {/* 1. ACTIVE LOADING HUD (If an active job exists) */}
       {currentActiveJob && (
         <div className="bg-slate-900 border-2 border-amber-500/80 rounded-3xl p-5 shadow-2xl space-y-4">
@@ -672,12 +709,23 @@ export const BulkWorkflowView: React.FC = () => {
                 <label className="text-[10px] uppercase font-bold text-slate-300 flex items-center gap-1 mb-1">
                   <span>{language === 'ar' ? 'المشغل والوردية' : 'Assigned Operator & Shift'}</span>
                 </label>
-                <div className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs font-bold text-slate-300 flex items-center justify-between">
-                  <span>{currentUser?.name || 'Operator'}</span>
-                  <span className="text-[10px] font-mono bg-slate-800 text-amber-400 px-2 py-0.5 rounded">
-                    Active Session
-                  </span>
-                </div>
+                {currentUser ? (
+                  <div className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs font-bold text-slate-300 flex items-center justify-between">
+                    <span>{currentUser.name}</span>
+                    <span className="text-[10px] font-mono bg-slate-800 text-amber-400 px-2 py-0.5 rounded">
+                      {currentUser.role.toUpperCase()}
+                    </span>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setIsUserModalOpen(true)}
+                    className="w-full bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/40 rounded-xl px-3 py-2 text-xs font-bold text-amber-300 flex items-center justify-between transition cursor-pointer"
+                  >
+                    <span>Click to Sign In</span>
+                    <Lock className="w-3.5 h-3.5 text-amber-400" />
+                  </button>
+                )}
               </div>
             </div>
           </div>
@@ -703,13 +751,15 @@ export const BulkWorkflowView: React.FC = () => {
           <div className="pt-2">
             <button
               type="button"
-              disabled={!selectedSiloId || (isDuplicateReceipt && currentUser?.role !== 'admin')}
+              disabled={!selectedSiloId || (isDuplicateReceipt && currentUser?.role !== 'admin') || !currentUser}
               onClick={handleStartLoading}
               className="w-full py-4 rounded-2xl bg-amber-500 hover:bg-amber-400 disabled:opacity-40 text-slate-950 font-black text-base shadow-xl shadow-amber-500/20 active:scale-98 transition flex items-center justify-center gap-2 cursor-pointer"
             >
               <Play className="w-5 h-5 fill-slate-950" />
               <span>
-                {selectedSiloId && BULK_SILOS[selectedSiloId]
+                {!currentUser
+                  ? (language === 'ar' ? 'سجّل الدخول أولاً لبدء التحميل' : 'Sign In to Start Loading')
+                  : selectedSiloId && BULK_SILOS[selectedSiloId]
                   ? language === 'ar'
                     ? `بدء التحميل من ${BULK_SILOS[selectedSiloId].nameAr}`
                     : `Start Loading at ${BULK_SILOS[selectedSiloId].nameEn}`
@@ -771,6 +821,11 @@ export const BulkWorkflowView: React.FC = () => {
           setIsCompleteModalOpen(false);
           setSelectedActiveSiloId(null);
         }}
+      />
+
+      <BulkUserModal
+        isOpen={isUserModalOpen}
+        onClose={() => setIsUserModalOpen(false)}
       />
     </div>
   );

@@ -17,13 +17,16 @@ import {
   completeBulkLoaderRemote,
   cancelBulkLoaderRemote,
   submitBulkEntry,
-  fetchBulkEntries
+  fetchBulkEntries,
+  authenticateUser
 } from '../services/api';
 import { getSaudiCurrentDateOnly, getSaudiCurrentTimeOnly, getSaudiCurrentShift, calculateDurationMinutes } from '../utils/timeZone';
 
 interface BulkAppContextType {
-  currentUser: User;
-  setCurrentUser: (u: User) => void;
+  currentUser: User | null;
+  setCurrentUser: (u: User | null) => void;
+  login: (id: string, pin: string) => Promise<{ success: boolean; message?: string }>;
+  logout: () => void;
   language: Language;
   setLanguage: (l: Language) => void;
   theme: Theme;
@@ -122,12 +125,15 @@ const TRANSLATIONS: Record<Language, Record<string, string>> = {
 };
 
 export const BulkAppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [currentUser, setCurrentUserState] = useState<User>(() => {
+  const [currentUser, setCurrentUserState] = useState<User | null>(() => {
     try {
-      const saved = localStorage.getItem('spcc_bulk_user');
-      if (saved) return JSON.parse(saved);
+      const saved = localStorage.getItem('spcc_bulk_auth_user');
+      if (saved) {
+        const u = JSON.parse(saved);
+        if (u && u.name) return u;
+      }
     } catch {}
-    return DEFAULT_OPERATORS[1]; // Hussein (Operator)
+    return null;
   });
 
   const [language, setLanguageState] = useState<Language>(() => {
@@ -158,9 +164,34 @@ export const BulkAppProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   const graceMap = useRef<Record<string, number>>({});
 
-  const setCurrentUser = (u: User) => {
+  const setCurrentUser = (u: User | null) => {
     setCurrentUserState(u);
-    localStorage.setItem('spcc_bulk_user', JSON.stringify(u));
+    if (u) {
+      localStorage.setItem('spcc_bulk_auth_user', JSON.stringify(u));
+    } else {
+      localStorage.removeItem('spcc_bulk_auth_user');
+    }
+  };
+
+  const login = async (id: string, pin: string): Promise<{ success: boolean; message?: string }> => {
+    setLoading(true);
+    try {
+      const res = await authenticateUser(id, pin);
+      if (res.success && res.user) {
+        setCurrentUser(res.user);
+        showToast(`Welcome, ${res.user.name}`, 'success');
+        playSuccess();
+        return { success: true };
+      }
+      return { success: false, message: res.message || 'Authentication failed' };
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const logout = () => {
+    setCurrentUser(null);
+    showToast('You have been signed out.', 'info');
   };
 
   const setLanguage = (l: Language) => {
@@ -311,6 +342,10 @@ export const BulkAppProvider: React.FC<{ children: React.ReactNode }> = ({ child
     ticket: BulkTicketData,
     conflictResolution?: string
   ): Promise<boolean> => {
+    if (!currentUser) {
+      showToast('Authentication required: Please sign in before starting a load.', 'error');
+      return false;
+    }
     setLoading(true);
     try {
       const nowMs = Date.now();
@@ -480,7 +515,7 @@ export const BulkAppProvider: React.FC<{ children: React.ReactNode }> = ({ child
         downtimeMinutes,
         netDurationMinutes: netMinutes,
         loadingRateTonnesPerHour: netMinutes > 0 ? Math.round((actualTonnes / (netMinutes / 60)) * 10) / 10 : 0,
-        operator: job.operator || currentUser.name,
+        operator: job.operator || (currentUser?.name ?? 'Operator'),
         status: 'COMPLETED',
         qrVariant: job.variant,
         conflictDetected: !!job.conflictDetected,
@@ -528,6 +563,10 @@ export const BulkAppProvider: React.FC<{ children: React.ReactNode }> = ({ child
     const job = activeJobs[siloId];
     if (!job) return false;
 
+    if (!currentUser) {
+      showToast('Authentication required: Please sign in.', 'error');
+      return false;
+    }
     // Permission check: users can only cancel their own job, admin can cancel anyone
     if (currentUser.role !== 'admin' && job.operator && job.operator.toLowerCase() !== currentUser.name.toLowerCase()) {
       showToast('Permission denied: You can only cancel your own loading jobs. Contact an Admin.', 'error');
@@ -564,6 +603,8 @@ export const BulkAppProvider: React.FC<{ children: React.ReactNode }> = ({ child
       value={{
         currentUser,
         setCurrentUser,
+        login,
+        logout,
         language,
         setLanguage,
         theme,
