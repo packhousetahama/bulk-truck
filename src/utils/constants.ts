@@ -96,25 +96,25 @@ export const BULK_STOPPAGE_OPTIONS: BulkStoppageType[] = [
   'PRODUCTION'
 ];
 
-// Pre-configured users with credentials (Admin + 6 Confirmed Operators + Legacy)
+// Pre-configured users with credentials (Admin + 6 Confirmed Operators + Legacy) - Unique 6-digit PINs
 export const DEFAULT_USERS: User[] = [
-  { id: 'admin', name: 'System Administrator', role: 'admin', enabled: true, pin: 'Tahama@2026' },
-  { id: 'supervisor', name: 'Shift Supervisor', role: 'admin', enabled: true, pin: 'Tahama@2026' },
-  { id: 'ali_garni', name: 'Ali Garni', role: 'user', enabled: true, pin: '2401' },
-  { id: 'gulam_rabani', name: 'Gulam Rabani', role: 'user', enabled: true, pin: '2402' },
-  { id: 'siddiq_shari', name: 'Siddiq Shari', role: 'user', enabled: true, pin: '2403' },
-  { id: 'siddiq_ansari', name: 'Siddiq Ansari', role: 'user', enabled: true, pin: '2404' },
-  { id: 'ahmed_nasir', name: 'Ahmed Nasir', role: 'user', enabled: true, pin: '2405' },
-  { id: 'ali_arthi', name: 'Ali Arthi', role: 'user', enabled: true, pin: '2406' },
+  { id: 'admin', name: 'System Administrator', role: 'admin', enabled: true, pin: '841920' },
+  { id: 'supervisor', name: 'Shift Supervisor', role: 'admin', enabled: true, pin: '841925' },
+  { id: 'ali_garni', name: 'Ali Garni', role: 'user', enabled: true, pin: '521401' },
+  { id: 'gulam_rabani', name: 'Gulam Rabani', role: 'user', enabled: true, pin: '521402' },
+  { id: 'siddiq_shari', name: 'Siddiq Shari', role: 'user', enabled: true, pin: '521403' },
+  { id: 'siddiq_ansari', name: 'Siddiq Ansari', role: 'user', enabled: true, pin: '521404' },
+  { id: 'ahmed_nasir', name: 'Ahmed Nasir', role: 'user', enabled: true, pin: '521405' },
+  { id: 'ali_arthi', name: 'Ali Arthi', role: 'user', enabled: true, pin: '521406' },
   // Historical operators
-  { id: 'hasani', name: 'HASANI', role: 'user', enabled: true, pin: '3101' },
-  { id: 'naif', name: 'NAIF', role: 'user', enabled: true, pin: '3102' },
-  { id: 'abdulla', name: 'ABDULLA', role: 'user', enabled: true, pin: '3103' },
-  { id: 'gasim', name: 'GASIM', role: 'user', enabled: true, pin: '3104' },
-  { id: 'abu_niyaz', name: 'ABU NIYAZ', role: 'user', enabled: true, pin: '3105' },
-  { id: 'dede', name: 'DEDE', role: 'user', enabled: true, pin: '3106' },
-  { id: 'ayoub', name: 'AYOUB', role: 'user', enabled: true, pin: '3107' },
-  { id: 'dvs_reddy', name: 'D. V. S REDDY', role: 'user', enabled: true, pin: '3108' }
+  { id: 'hasani', name: 'HASANI', role: 'user', enabled: true, pin: '631101' },
+  { id: 'naif', name: 'NAIF', role: 'user', enabled: true, pin: '631102' },
+  { id: 'abdulla', name: 'ABDULLA', role: 'user', enabled: true, pin: '631103' },
+  { id: 'gasim', name: 'GASIM', role: 'user', enabled: true, pin: '631104' },
+  { id: 'abu_niyaz', name: 'ABU NIYAZ', role: 'user', enabled: true, pin: '631105' },
+  { id: 'dede', name: 'DEDE', role: 'user', enabled: true, pin: '631106' },
+  { id: 'ayoub', name: 'AYOUB', role: 'user', enabled: true, pin: '631107' },
+  { id: 'dvs_reddy', name: 'D. V. S REDDY', role: 'user', enabled: true, pin: '631108' }
 ];
 
 export const DEFAULT_OPERATORS = [

@@ -315,7 +315,7 @@ export async function fetchBulkDashboardMetrics(): Promise<BulkDashboardMetrics 
 
 // --- AUTHENTICATION & USER MANAGEMENT ---
 const LOCAL_USERS_KEY = 'spcc_bulk_users_store';
-const USERS_STORE_VER = 'spcc_bulk_users_v2_2026';
+const USERS_STORE_VER = 'spcc_bulk_users_v3_6digits';
 
 export function getUsers(): User[] {
   try {
