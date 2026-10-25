@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { BulkSiloId } from '../types';
 import { BULK_STOPPAGE_REASONS, BULK_SILOS } from '../utils/constants';
 import { useBulkApp } from '../context/BulkAppContext';
-import { AlertTriangle, X, Check, FileText } from 'lucide-react';
+import { AlertTriangle, X, Check, FileText, Loader2 } from 'lucide-react';
 
 interface BulkStoppageModalProps {
   isOpen: boolean;
@@ -25,11 +25,19 @@ export const BulkStoppageModal: React.FC<BulkStoppageModalProps> = ({
 
   const silo = BULK_SILOS[siloId];
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const found = BULK_STOPPAGE_REASONS.find(r => r.id === selectedReasonId);
-    const reasonText = found ? (language === 'ar' ? found.ar : found.en) : selectedReasonId;
-    onSubmit(reasonText, customComment.trim() || undefined);
+    if (isSubmitting) return;
+    setIsSubmitting(true);
+    try {
+      const found = BULK_STOPPAGE_REASONS.find(r => r.id === selectedReasonId);
+      const reasonText = found ? (language === 'ar' ? found.ar : found.en) : selectedReasonId;
+      await onSubmit(reasonText, customComment.trim() || undefined);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -118,9 +126,17 @@ export const BulkStoppageModal: React.FC<BulkStoppageModalProps> = ({
             </button>
             <button
               type="submit"
-              className="flex-1 py-2.5 rounded-xl bg-red-600 hover:bg-red-500 text-white font-black text-xs transition shadow-lg shadow-red-600/20 active:scale-95"
+              disabled={isSubmitting}
+              className="flex-1 py-2.5 rounded-xl bg-red-600 hover:bg-red-500 text-white font-black text-xs transition shadow-lg shadow-red-600/20 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {language === 'ar' ? 'تأكيد التوقف' : 'Confirm Stoppage'}
+              {isSubmitting ? (
+                <span className="flex items-center justify-center gap-1.5">
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <span>{language === 'ar' ? 'جاري الحفظ...' : 'Saving...'}</span>
+                </span>
+              ) : (
+                language === 'ar' ? 'تأكيد التوقف' : 'Confirm Stoppage'
+              )}
             </button>
           </div>
         </form>

@@ -8,7 +8,7 @@ import { useBulkApp } from '../context/BulkAppContext';
 
 import { calculateDurationMinutes, getSaudiCurrentTimeOnly } from '../utils/timeZone';
 
-import { CheckCircle2, X, Scale, AlertTriangle, Lock } from 'lucide-react';
+import { CheckCircle2, X, Scale, AlertTriangle, Lock, Loader2 } from 'lucide-react';
 
 
 
@@ -39,6 +39,7 @@ export const BulkCompleteModal: React.FC<BulkCompleteModalProps> = ({
 }) => {
 
   const { language, currentUser, showToast } = useBulkApp();
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const [actualTonnes, setActualTonnes] = useState<string>(
 
@@ -125,26 +126,26 @@ export const BulkCompleteModal: React.FC<BulkCompleteModalProps> = ({
 
 
 
-  const handleCompleteAndWeighOut = () => {
-
-    if (numVal <= 0) return;
-
-    // Complete the load, preserving stoppage reason (e.g. MECHANICAL, PRODUCTION)
-
-    onConfirmComplete(numVal, stoppage, 'completed');
-
+  const handleCompleteAndWeighOut = async () => {
+    if (numVal <= 0 || isSubmitting) return;
+    setIsSubmitting(true);
+    try {
+      await onConfirmComplete(numVal, stoppage, 'completed');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
 
 
-  const handleSaveDelayInProgress = () => {
-
-    if (numVal <= 0) return;
-
-    // Keep active on silo with status 'not completed'
-
-    onConfirmComplete(numVal, stoppage, 'not completed');
-
+  const handleSaveDelayInProgress = async () => {
+    if (numVal <= 0 || isSubmitting) return;
+    setIsSubmitting(true);
+    try {
+      await onConfirmComplete(numVal, stoppage, 'not completed');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
 
@@ -598,7 +599,7 @@ export const BulkCompleteModal: React.FC<BulkCompleteModalProps> = ({
 
                 type="button"
 
-                disabled={numVal <= 0 || isJobOwnedByOther}
+                disabled={numVal <= 0 || isJobOwnedByOther || isSubmitting}
 
                 onClick={handleCompleteAndWeighOut}
 
@@ -632,7 +633,7 @@ export const BulkCompleteModal: React.FC<BulkCompleteModalProps> = ({
 
                 type="button"
 
-                disabled={numVal <= 0}
+                disabled={numVal <= 0 || isSubmitting}
 
                 onClick={handleSaveDelayInProgress}
 

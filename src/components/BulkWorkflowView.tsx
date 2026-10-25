@@ -53,6 +53,7 @@ export const BulkWorkflowView: React.FC = () => {
 
   // Modals state
   const [isScannerOpen, setIsScannerOpen] = useState(false);
+  const [isResolvingSilo, setIsResolvingSilo] = useState<string | null>(null);
   const [isUserModalOpen, setIsUserModalOpen] = useState(false);
   const [isConflictModalOpen, setIsConflictModalOpen] = useState(false);
   const [isStoppageModalOpen, setIsStoppageModalOpen] = useState(false);
@@ -592,8 +593,7 @@ export const BulkWorkflowView: React.FC = () => {
               {currentActiveJob.status === 'STOPPAGE' ? (
                 <button
                   type="button"
-                  disabled={isJobOwnedByOther}
-                  onClick={() => {
+                  onClick={async () => {
                     if (!currentUser) {
                       showToast(language === 'ar' ? 'يرجى تسجيل الدخول أولاً' : 'Authentication required: Please sign in with your User ID and PIN.', 'error');
                       setIsUserModalOpen(true);
@@ -608,17 +608,34 @@ export const BulkWorkflowView: React.FC = () => {
                       );
                       return;
                     }
-                    resolveStoppage(currentActiveJob.siloId);
+                    if (isResolvingSilo) return;
+                    setIsResolvingSilo(currentActiveJob.siloId);
+                    try {
+                      await resolveStoppage(currentActiveJob.siloId);
+                    } finally {
+                      setIsResolvingSilo(null);
+                    }
                   }}
+                  disabled={isJobOwnedByOther || Boolean(isResolvingSilo)}
                   className={`py-3 px-4 rounded-2xl font-black text-xs transition shadow-lg flex items-center justify-center gap-2 ${
-                    isJobOwnedByOther
+                    isJobOwnedByOther || Boolean(isResolvingSilo)
                       ? 'bg-slate-800 text-slate-400 border border-slate-700 cursor-not-allowed opacity-60 shadow-none'
                       : 'bg-emerald-600 hover:bg-emerald-500 text-white active:scale-95 cursor-pointer'
                   }`}
                   title={isJobOwnedByOther ? (language === 'ar' ? `مقفل لـ ${currentActiveJob.operator}` : `Locked to ${currentActiveJob.operator}`) : undefined}
                 >
-                  {isJobOwnedByOther ? <Lock className="w-4 h-4 text-slate-400" /> : <Play className="w-4 h-4 fill-white" />}
-                  <span>{language === 'ar' ? 'استئناف التحميل' : 'Resume Loading'}</span>
+                  {Boolean(isResolvingSilo) ? (
+                    <Loader2 className="w-4 h-4 animate-spin text-emerald-400" />
+                  ) : isJobOwnedByOther ? (
+                    <Lock className="w-4 h-4 text-slate-400" />
+                  ) : (
+                    <Play className="w-4 h-4 fill-white" />
+                  )}
+                  <span>
+                    {Boolean(isResolvingSilo)
+                      ? (language === 'ar' ? 'جاري الاستئناف...' : 'Resuming...')
+                      : (language === 'ar' ? 'استئناف التحميل' : 'Resume Loading')}
+                  </span>
                 </button>
               ) : (
                 <button

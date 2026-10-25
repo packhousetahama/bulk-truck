@@ -839,6 +839,13 @@ export const BulkAppProvider: React.FC<{ children: React.ReactNode }> = ({ child
     }
 
     const existingJob = activeJobs[siloId];
+    if (existingJob && existingJob.status === 'STOPPAGE') {
+      showToast(
+        language === 'ar' ? 'يوجد بالفعل عطل مسجل قيد المعالجة لهذه الصومعة.' : 'Silo already has an active stoppage.',
+        'info'
+      );
+      return true;
+    }
     if (existingJob) {
       const jobOp = existingJob.operator || (existingJob as any).operatorName;
       if (currentUser.role !== 'admin' && jobOp) {
@@ -951,6 +958,9 @@ export const BulkAppProvider: React.FC<{ children: React.ReactNode }> = ({ child
     }
 
     const existingJob = activeJobs[siloId];
+    if (existingJob && existingJob.status !== 'STOPPAGE') {
+      return true;
+    }
     if (existingJob) {
       const jobOp = existingJob.operator || (existingJob as any).operatorName;
       if (currentUser.role !== 'admin' && jobOp) {
