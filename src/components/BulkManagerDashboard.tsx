@@ -39,13 +39,13 @@ export const BulkManagerDashboard: React.FC = () => {
     loadMetrics();
   }, []);
 
-  const totalTrucks = metrics?.totalTrucks || 0;
-  const totalTonnes = metrics?.totalTonnes || 0;
+  const totalTrucks = metrics?.totalTrucks ?? (metrics as any)?.totalCompletedTrucks ?? 0;
+  const totalTonnes = metrics?.totalTonnes ?? (metrics as any)?.totalCompletedTonnes ?? 0;
   const opcTonnes = metrics?.opcTonnes || 0;
   const guTonnes = metrics?.guTonnes || 0;
   const ppcTonnes = metrics?.ppcTonnes || 0;
   const totalDowntime = metrics?.totalDowntimeMinutes || 0;
-  const avgGross = metrics?.avgGrossMinutes || 0;
+  const avgGross = metrics?.avgGrossMinutes ?? (metrics as any)?.avgDurationMinutes ?? 0;
 
   return (
     <div className="w-full max-w-4xl mx-auto space-y-3 sm:space-y-4 pb-20 overflow-x-hidden">

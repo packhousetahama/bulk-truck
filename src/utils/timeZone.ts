@@ -60,7 +60,12 @@ export function calculateDurationMinutes(start: string, end: string): number {
   if (!start || !end) return 0;
   const parseSec = (t: string) => {
     const parts = t.trim().split(':').map(Number);
-    if (parts.length === 2) return parts[0] * 3600 + parts[1] * 60;
+    if (parts.length === 2) {
+      if (parts[0] >= 5) {
+        return parts[0] * 60 + parts[1]; // mm:ss
+      }
+      return parts[0] * 3600 + parts[1] * 60; // HH:mm
+    }
     if (parts.length === 3) return parts[0] * 3600 + parts[1] * 60 + parts[2];
     return 0;
   };
