@@ -1293,12 +1293,12 @@ export const BulkWorkflowView: React.FC = () => {
             if (selectedActiveSiloId) {
               const completedSilo = selectedActiveSiloId;
               await completeJob(completedSilo, actualTonnes, stoppageReason, status);
-              if (stoppageReason && stoppageReason !== 'NONE') {
+              if (status === 'not completed') {
                 // Stoppage problem: KEEP FOCUSED on this silo so operator sees active delay
                 setFocusedSiloId(completedSilo);
                 setShowIntakeForm(false);
               } else {
-                // Stoppage is NONE: finalized & completed! Free silo
+                // Stoppage is resolved / completed! Free silo
                 const remaining = activeSiloIds.filter(id => id !== completedSilo);
                 if (remaining.length > 0) {
                   setFocusedSiloId(remaining[0]);
