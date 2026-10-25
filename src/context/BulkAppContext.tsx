@@ -18,7 +18,7 @@ import {
 
 } from '../types';
 
-import { DEFAULT_OPERATORS, BULK_SILOS } from '../utils/constants';
+import { DEFAULT_OPERATORS, BULK_SILOS, isSameOperator } from '../utils/constants';
 
 import {
 
@@ -839,6 +839,20 @@ export const BulkAppProvider: React.FC<{ children: React.ReactNode }> = ({ child
     }
 
     const existingJob = activeJobs[siloId];
+    if (existingJob) {
+      const jobOp = existingJob.operator || (existingJob as any).operatorName;
+      if (currentUser.role !== 'admin' && jobOp) {
+        if (!isSameOperator(jobOp, currentUser.name) && !isSameOperator(jobOp, currentUser.id)) {
+          showToast(
+            language === 'ar'
+              ? `تم رفض الإذن: الصومعة قيد التحميل بواسطة ${jobOp}. يحق فقط لـ ${jobOp} أو المشرف تسجيل عطل.`
+              : `Permission denied: Silo is being loaded by ${jobOp}. Only ${jobOp} or an Administrator can report a stoppage.`,
+            'error'
+          );
+          return false;
+        }
+      }
+    }
 
     setLoading(true);
 
@@ -937,6 +951,20 @@ export const BulkAppProvider: React.FC<{ children: React.ReactNode }> = ({ child
     }
 
     const existingJob = activeJobs[siloId];
+    if (existingJob) {
+      const jobOp = existingJob.operator || (existingJob as any).operatorName;
+      if (currentUser.role !== 'admin' && jobOp) {
+        if (!isSameOperator(jobOp, currentUser.name) && !isSameOperator(jobOp, currentUser.id)) {
+          showToast(
+            language === 'ar'
+              ? `تم رفض الإذن: الصومعة قيد التحميل بواسطة ${jobOp}. يحق فقط لـ ${jobOp} أو المشرف استئناف التحميل.`
+              : `Permission denied: Silo is being loaded by ${jobOp}. Only ${jobOp} or an Administrator can resume loading.`,
+            'error'
+          );
+          return false;
+        }
+      }
+    }
 
     setLoading(true);
 
@@ -1050,7 +1078,18 @@ export const BulkAppProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
     if (!job) return false;
 
-
+    const jobOp = job.operator || (job as any).operatorName;
+    if (currentUser.role !== 'admin' && jobOp) {
+      if (!isSameOperator(jobOp, currentUser.name) && !isSameOperator(jobOp, currentUser.id)) {
+        showToast(
+          language === 'ar'
+            ? `تم رفض الإذن: الصومعة قيد التحميل بواسطة ${jobOp}. يحق فقط لـ ${jobOp} أو المشرف إتمام التحميل.`
+            : `Permission denied: Silo is being loaded by ${jobOp}. Only ${jobOp} or an Administrator can complete it.`,
+          'error'
+        );
+        return false;
+      }
+    }
 
     setLoading(true);
 
@@ -1286,14 +1325,22 @@ export const BulkAppProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
     if (!job) return false;
 
-
-
     if (!currentUser) {
-
       showToast('Authentication required: Please sign in.', 'error');
-
       return false;
+    }
 
+    const jobOp = job.operator || (job as any).operatorName;
+    if (currentUser.role !== 'admin' && jobOp) {
+      if (!isSameOperator(jobOp, currentUser.name) && !isSameOperator(jobOp, currentUser.id)) {
+        showToast(
+          language === 'ar'
+            ? `تم رفض الإذن: الصومعة قيد التحميل بواسطة ${jobOp}. يحق فقط لـ ${jobOp} أو المشرف إلغاء التحميل.`
+            : `Permission denied: Silo is being loaded by ${jobOp}. Only ${jobOp} or an Administrator can cancel it.`,
+          'error'
+        );
+        return false;
+      }
     }
 
     // Allow signed in operators to clear/cancel with confirmation

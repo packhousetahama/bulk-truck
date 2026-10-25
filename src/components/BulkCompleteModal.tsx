@@ -2,13 +2,13 @@ import React, { useState, useEffect } from 'react';
 
 import { BulkActiveJob } from '../types';
 
-import { BULK_SILOS, BULK_STOPPAGE_OPTIONS, BulkStoppageType } from '../utils/constants';
+import { BULK_SILOS, BULK_STOPPAGE_OPTIONS, BulkStoppageType, isSameOperator } from '../utils/constants';
 
 import { useBulkApp } from '../context/BulkAppContext';
 
 import { calculateDurationMinutes, getSaudiCurrentTimeOnly } from '../utils/timeZone';
 
-import { CheckCircle2, X, Scale, AlertTriangle } from 'lucide-react';
+import { CheckCircle2, X, Scale, AlertTriangle, Lock } from 'lucide-react';
 
 
 
@@ -38,7 +38,7 @@ export const BulkCompleteModal: React.FC<BulkCompleteModalProps> = ({
 
 }) => {
 
-  const { language } = useBulkApp();
+  const { language, currentUser, showToast } = useBulkApp();
 
   const [actualTonnes, setActualTonnes] = useState<string>(
 
@@ -103,6 +103,15 @@ export const BulkCompleteModal: React.FC<BulkCompleteModalProps> = ({
   const variance = Math.round((numVal - job.authorisedTonnes) * 100) / 100;
 
   const isProblem = stoppage !== 'NONE';
+
+  const isJobOwnedByOther = Boolean(
+    job &&
+    currentUser &&
+    currentUser.role !== 'admin' &&
+    (job.operator || (job as any).operatorName) &&
+    !isSameOperator(job.operator || (job as any).operatorName, currentUser.name) &&
+    !isSameOperator(job.operator || (job as any).operatorName, currentUser.id)
+  );
 
 
 
@@ -589,7 +598,7 @@ export const BulkCompleteModal: React.FC<BulkCompleteModalProps> = ({
 
                 type="button"
 
-                disabled={numVal <= 0}
+                disabled={numVal <= 0 || isJobOwnedByOther}
 
                 onClick={handleCompleteAndWeighOut}
 

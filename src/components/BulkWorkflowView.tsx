@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useBulkApp } from '../context/BulkAppContext';
 import { BulkSiloId, BulkTicketData, CementType, BulkEntry } from '../types';
-import { BULK_SILOS, BULK_SILO_IDS, BULK_CEMENT_COMPATIBLE_SILOS } from '../utils/constants';
+import { BULK_SILOS, BULK_SILO_IDS, BULK_CEMENT_COMPATIBLE_SILOS, isSameOperator } from '../utils/constants';
 import { BulkSiloSelector } from './BulkSiloSelector';
 import { BulkQRScannerModal } from './BulkQRScannerModal';
 import { BulkConflictModal } from './BulkConflictModal';
@@ -95,6 +95,24 @@ export const BulkWorkflowView: React.FC = () => {
       }) || activeSiloIds[0] || null);
 
   const currentActiveJob = effectiveActiveSiloId ? activeJobs[effectiveActiveSiloId] : null;
+
+  // Ownership permission: only the operator who started the load or an Admin can complete, report delay, or cancel
+  const isJobOwnedByOther = Boolean(
+    currentActiveJob &&
+    currentUser &&
+    currentUser.role !== 'admin' &&
+    (currentActiveJob.operator || (currentActiveJob as any).operatorName) &&
+    !isSameOperator(currentActiveJob.operator || (currentActiveJob as any).operatorName, currentUser.name) &&
+    !isSameOperator(currentActiveJob.operator || (currentActiveJob as any).operatorName, currentUser.id)
+  );
+
+  const canControlJob = Boolean(
+    currentActiveJob &&
+    currentUser &&
+    (currentUser.role === 'admin' ||
+     isSameOperator(currentActiveJob.operator || (currentActiveJob as any).operatorName, currentUser.name) ||
+     isSameOperator(currentActiveJob.operator || (currentActiveJob as any).operatorName, currentUser.id))
+  );
 
   // Canonical normalize helper
   const cleanReceipt = (pendingTicket?.receiptNumber || manualReceipt || '').trim().toUpperCase().replace(/^#+/, '').replace(/\s+/g, '');
@@ -549,59 +567,127 @@ export const BulkWorkflowView: React.FC = () => {
             )}
           </div>
 
+          {/* ACTIVE LOAD BELONGING TO ANOTHER OPERATOR WARNING */}
+          {isJobOwnedByOther && (
+            <div className="p-4 rounded-2xl bg-amber-950/70 border-2 border-amber-500/80 flex items-start gap-3 text-xs text-amber-200 shadow-xl animate-in fade-in">
+              <Lock className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
+              <div className="space-y-1">
+                <span className="font-bold text-sm text-amber-300 block">
+                  {language === 'ar'
+                    ? `هذه الصومعة قيد التحميل بواسطة ${currentActiveJob.operator}`
+                    : `Active Load Locked to ${currentActiveJob.operator}`}
+                </span>
+                <p className="text-[11px] text-amber-300/80 leading-relaxed">
+                  {language === 'ar'
+                    ? `أنت مسجل الدخول كـ (${currentUser?.name}). صلاحية إتمام التحميل أو تسجيل الأعطال أو الإلغاء مقصورة فقط على المشغل (${currentActiveJob.operator}) أو المشرف العام (Admin).`
+                    : `You are signed in as (${currentUser?.name}). Only ${currentActiveJob.operator} or an Administrator can complete, report delay, or cancel this load.`}
+                </p>
+              </div>
+            </div>
+          )}
+
           {/* Action Buttons for Active Load */}
           <div className="space-y-2 pt-1">
             <div className="grid grid-cols-2 gap-2">
               {currentActiveJob.status === 'STOPPAGE' ? (
                 <button
                   type="button"
+                  disabled={isJobOwnedByOther}
                   onClick={() => {
                     if (!currentUser) {
                       showToast(language === 'ar' ? 'يرجى تسجيل الدخول أولاً' : 'Authentication required: Please sign in with your User ID and PIN.', 'error');
                       setIsUserModalOpen(true);
                       return;
                     }
+                    if (isJobOwnedByOther) {
+                      showToast(
+                        language === 'ar'
+                          ? `تم رفض الإذن: الصومعة قيد التحميل بواسطة ${currentActiveJob.operator}. يحق فقط لـ ${currentActiveJob.operator} أو المشرف استئنافها.`
+                          : `Permission denied: Silo is being loaded by ${currentActiveJob.operator}. Only ${currentActiveJob.operator} or an Administrator can resume it.`,
+                        'error'
+                      );
+                      return;
+                    }
                     resolveStoppage(currentActiveJob.siloId);
                   }}
-                  className="py-3 px-4 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs transition shadow-lg active:scale-95 flex items-center justify-center gap-2 cursor-pointer"
+                  className={`py-3 px-4 rounded-2xl font-black text-xs transition shadow-lg flex items-center justify-center gap-2 ${
+                    isJobOwnedByOther
+                      ? 'bg-slate-800 text-slate-400 border border-slate-700 cursor-not-allowed opacity-60 shadow-none'
+                      : 'bg-emerald-600 hover:bg-emerald-500 text-white active:scale-95 cursor-pointer'
+                  }`}
+                  title={isJobOwnedByOther ? (language === 'ar' ? `مقفل لـ ${currentActiveJob.operator}` : `Locked to ${currentActiveJob.operator}`) : undefined}
                 >
-                  <Play className="w-4 h-4 fill-white" />
+                  {isJobOwnedByOther ? <Lock className="w-4 h-4 text-slate-400" /> : <Play className="w-4 h-4 fill-white" />}
                   <span>{language === 'ar' ? 'استئناف التحميل' : 'Resume Loading'}</span>
                 </button>
               ) : (
                 <button
                   type="button"
+                  disabled={isJobOwnedByOther}
                   onClick={() => {
                     if (!currentUser) {
                       showToast(language === 'ar' ? 'يرجى تسجيل الدخول أولاً' : 'Authentication required: Please sign in with your User ID and PIN.', 'error');
                       setIsUserModalOpen(true);
                       return;
                     }
+                    if (isJobOwnedByOther) {
+                      showToast(
+                        language === 'ar'
+                          ? `تم رفض الإذن: الصومعة قيد التحميل بواسطة ${currentActiveJob.operator}. يحق فقط لـ ${currentActiveJob.operator} أو المشرف تسجيل الأعطال.`
+                          : `Permission denied: Silo is being loaded by ${currentActiveJob.operator}. Only ${currentActiveJob.operator} or an Administrator can report delays.`,
+                        'error'
+                      );
+                      return;
+                    }
                     setSelectedActiveSiloId(currentActiveJob.siloId);
                     setIsStoppageModalOpen(true);
                   }}
-                  className="py-3 px-4 rounded-2xl bg-red-600/20 hover:bg-red-600/30 border border-red-500/50 text-red-300 font-bold text-xs transition active:scale-95 flex items-center justify-center gap-2 cursor-pointer"
+                  className={`py-3 px-4 rounded-2xl font-bold text-xs transition flex items-center justify-center gap-2 ${
+                    isJobOwnedByOther
+                      ? 'bg-slate-800 text-slate-400 border border-slate-700 cursor-not-allowed opacity-60 shadow-none'
+                      : 'bg-red-600/20 hover:bg-red-600/30 border border-red-500/50 text-red-300 active:scale-95 cursor-pointer'
+                  }`}
+                  title={isJobOwnedByOther ? (language === 'ar' ? `مقفل لـ ${currentActiveJob.operator}` : `Locked to ${currentActiveJob.operator}`) : undefined}
                 >
-                  <AlertTriangle className="w-4 h-4 text-red-400" />
+                  {isJobOwnedByOther ? <Lock className="w-4 h-4 text-slate-400" /> : <AlertTriangle className="w-4 h-4 text-red-400" />}
                   <span>{language === 'ar' ? 'تسجيل عطل' : 'Report Delay'}</span>
                 </button>
               )}
 
               <button
                 type="button"
+                disabled={isJobOwnedByOther}
                 onClick={() => {
                   if (!currentUser) {
                     showToast(language === 'ar' ? 'يرجى تسجيل الدخول أولاً قبل إتمام التحميل' : 'Authentication required: Please sign in before completing a load.', 'error');
                     setIsUserModalOpen(true);
                     return;
                   }
+                  if (isJobOwnedByOther) {
+                    showToast(
+                      language === 'ar'
+                        ? `تم رفض الإذن: الصومعة قيد التحميل بواسطة ${currentActiveJob.operator}. يحق فقط لـ ${currentActiveJob.operator} أو المشرف إتمامها.`
+                        : `Permission denied: Silo is being loaded by ${currentActiveJob.operator}. Only ${currentActiveJob.operator} or an Administrator can complete it.`,
+                      'error'
+                    );
+                    return;
+                  }
                   setSelectedActiveSiloId(currentActiveJob.siloId);
                   setIsCompleteModalOpen(true);
                 }}
-                className="py-3 px-4 rounded-2xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs transition shadow-lg shadow-amber-500/20 active:scale-95 flex items-center justify-center gap-2 cursor-pointer"
+                className={`py-3 px-4 rounded-2xl font-black text-xs transition shadow-lg flex items-center justify-center gap-2 ${
+                  isJobOwnedByOther
+                    ? 'bg-slate-800 text-slate-400 border border-slate-700 cursor-not-allowed opacity-60 shadow-none'
+                    : 'bg-amber-500 hover:bg-amber-400 text-slate-950 shadow-amber-500/20 active:scale-95 cursor-pointer'
+                }`}
+                title={isJobOwnedByOther ? (language === 'ar' ? `مقفل للمشغل ${currentActiveJob.operator}` : `Locked to ${currentActiveJob.operator}`) : undefined}
               >
-                <CheckCircle2 className="w-4 h-4" />
-                <span>{language === 'ar' ? 'إتمام التحميل' : 'Complete & Weigh-Out'}</span>
+                {isJobOwnedByOther ? <Lock className="w-4 h-4 text-slate-400" /> : <CheckCircle2 className="w-4 h-4" />}
+                <span>
+                  {isJobOwnedByOther
+                    ? (language === 'ar' ? `مقفل لـ ${currentActiveJob.operator}` : `Locked to ${currentActiveJob.operator}`)
+                    : (language === 'ar' ? 'إتمام التحميل' : 'Complete & Weigh-Out')}
+                </span>
               </button>
             </div>
 
@@ -630,33 +716,35 @@ export const BulkWorkflowView: React.FC = () => {
               </div>
             )}
 
-            {/* Cancel Load Link */}
-            <div className="text-center pt-1">
-              <button
-                type="button"
-                onClick={async () => {
-                  if (!currentUser) {
-                    showToast(language === 'ar' ? 'يرجى تسجيل الدخول أولاً' : 'Authentication required: Please sign in with your User ID and PIN.', 'error');
-                    setIsUserModalOpen(true);
-                    return;
-                  }
-                  if (confirm('Are you sure you want to cancel this bulk loading session?')) {
-                    const siloToCancel = currentActiveJob.siloId;
-                    await cancelJob(siloToCancel, 'Operator cancelled');
-                    const remaining = activeSiloIds.filter(id => id !== siloToCancel);
-                    if (remaining.length > 0) {
-                      setFocusedSiloId(remaining[0]);
-                    } else {
-                      setFocusedSiloId(null);
-                      setShowIntakeForm(false);
+            {/* Cancel Load Link (Job Owner or Admin only) */}
+            {canControlJob && (
+              <div className="text-center pt-1">
+                <button
+                  type="button"
+                  onClick={async () => {
+                    if (!currentUser) {
+                      showToast(language === 'ar' ? 'يرجى تسجيل الدخول أولاً' : 'Authentication required: Please sign in with your User ID and PIN.', 'error');
+                      setIsUserModalOpen(true);
+                      return;
                     }
-                  }
-                }}
-                className="text-[11px] text-red-400/80 hover:text-red-300 underline font-semibold cursor-pointer"
-              >
-                {language === 'ar' ? 'إلغاء التحميل' : 'Cancel this Loading Session'}
-              </button>
-            </div>
+                    if (confirm('Are you sure you want to cancel this bulk loading session?')) {
+                      const siloToCancel = currentActiveJob.siloId;
+                      await cancelJob(siloToCancel, 'Operator cancelled');
+                      const remaining = activeSiloIds.filter(id => id !== siloToCancel);
+                      if (remaining.length > 0) {
+                        setFocusedSiloId(remaining[0]);
+                      } else {
+                        setFocusedSiloId(null);
+                        setShowIntakeForm(false);
+                      }
+                    }
+                  }}
+                  className="text-[11px] text-red-400/80 hover:text-red-300 underline font-semibold cursor-pointer"
+                >
+                  {language === 'ar' ? 'إلغاء التحميل' : 'Cancel this Loading Session'}
+                </button>
+              </div>
+            )}
           </div>
         </div>
       )}

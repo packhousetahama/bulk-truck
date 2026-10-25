@@ -126,3 +126,15 @@ export const DEFAULT_OPERATORS = [
   { id: 'ahmed_nasir', name: 'Ahmed Nasir', role: 'user' as const },
   { id: 'ali_arthi', name: 'Ali Arthi', role: 'user' as const }
 ];
+
+/**
+ * Normalizes two operator strings (or user id vs display name) and checks equality.
+ * Case-insensitive, removes spaces, dots, underscores, and dashes.
+ * E.g. "Ali Garni", "ali_garni", and "ali garni" all match.
+ */
+export function isSameOperator(a?: string | null, b?: string | null): boolean {
+  if (!a || !b) return false;
+  const normA = String(a).trim().toUpperCase().replace(/[\s._-]+/g, '');
+  const normB = String(b).trim().toUpperCase().replace(/[\s._-]+/g, '');
+  return normA.length > 0 && normA === normB;
+}
