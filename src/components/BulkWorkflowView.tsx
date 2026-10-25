@@ -695,14 +695,24 @@ export const BulkWorkflowView: React.FC = () => {
                 className={`py-3 px-4 rounded-2xl font-black text-xs transition shadow-lg flex items-center justify-center gap-2 ${
                   isJobOwnedByOther
                     ? 'bg-slate-800 text-slate-400 border border-slate-700 cursor-not-allowed opacity-60 shadow-none'
+                    : currentActiveJob.status === 'STOPPAGE'
+                    ? 'bg-amber-600/20 hover:bg-amber-600/30 border border-amber-500/50 text-amber-300 active:scale-95 cursor-pointer shadow-none'
                     : 'bg-amber-500 hover:bg-amber-400 text-slate-950 shadow-amber-500/20 active:scale-95 cursor-pointer'
                 }`}
                 title={isJobOwnedByOther ? (language === 'ar' ? `مقفل للمشغل ${currentActiveJob.operator}` : `Locked to ${currentActiveJob.operator}`) : undefined}
               >
-                {isJobOwnedByOther ? <Lock className="w-4 h-4 text-slate-400" /> : <CheckCircle2 className="w-4 h-4" />}
+                {isJobOwnedByOther ? (
+                  <Lock className="w-4 h-4 text-slate-400" />
+                ) : currentActiveJob.status === 'STOPPAGE' ? (
+                  <AlertTriangle className="w-4 h-4 text-amber-400" />
+                ) : (
+                  <CheckCircle2 className="w-4 h-4" />
+                )}
                 <span>
                   {isJobOwnedByOther
                     ? (language === 'ar' ? `مقفل لـ ${currentActiveJob.operator}` : `Locked to ${currentActiveJob.operator}`)
+                    : currentActiveJob.status === 'STOPPAGE'
+                    ? (language === 'ar' ? 'إلغاء / شحنة جزئية' : 'Abort / Partial Load')
                     : (language === 'ar' ? 'إتمام التحميل' : 'Complete & Weigh-Out')}
                 </span>
               </button>
@@ -1289,16 +1299,16 @@ export const BulkWorkflowView: React.FC = () => {
             setIsCompleteModalOpen(false);
             setSelectedActiveSiloId(null);
           }}
-          onConfirmComplete={async (actualTonnes, stoppageReason, status) => {
+          onConfirmComplete={async (actualTonnes, stoppageReason, status, isAbort) => {
             if (selectedActiveSiloId) {
               const completedSilo = selectedActiveSiloId;
-              await completeJob(completedSilo, actualTonnes, stoppageReason, status);
-              if (status === 'not completed') {
-                // Stoppage problem: KEEP FOCUSED on this silo so operator sees active delay
+              await completeJob(completedSilo, actualTonnes, stoppageReason, status, isAbort);
+              if (status === 'not completed' && !isAbort) {
+                // Delay in progress kept active: KEEP FOCUSED on this silo so operator sees active delay
                 setFocusedSiloId(completedSilo);
                 setShowIntakeForm(false);
               } else {
-                // Stoppage is resolved / completed! Free silo
+                // Completed or aborted dispatch: Free silo!
                 const remaining = activeSiloIds.filter(id => id !== completedSilo);
                 if (remaining.length > 0) {
                   setFocusedSiloId(remaining[0]);

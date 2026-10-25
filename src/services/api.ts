@@ -249,6 +249,7 @@ export async function completeBulkLoaderRemote(params: {
   downtimeMinutes?: number;
   stoppage?: string;
   status?: string;
+  abortDispatch?: boolean;
   id?: string;
   userId?: string;
   pin?: string;

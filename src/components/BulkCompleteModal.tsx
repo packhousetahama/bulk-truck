@@ -20,7 +20,7 @@ interface BulkCompleteModalProps {
 
   onClose: () => void;
 
-  onConfirmComplete: (actualTonnes: number, stoppageReason: BulkStoppageType, status: 'completed' | 'not completed') => void;
+  onConfirmComplete: (actualTonnes: number, stoppageReason: BulkStoppageType, status: 'completed' | 'not completed', isAbort?: boolean) => void;
 
 }
 
@@ -127,22 +127,30 @@ export const BulkCompleteModal: React.FC<BulkCompleteModalProps> = ({
 
 
   const handleCompleteAndWeighOut = async () => {
-    if (numVal <= 0 || isSubmitting) return;
+    if (isProblem || numVal <= 0 || isSubmitting) return;
     setIsSubmitting(true);
     try {
-      await onConfirmComplete(numVal, stoppage, 'completed');
+      await onConfirmComplete(numVal, stoppage, 'completed', false);
     } finally {
       setIsSubmitting(false);
     }
   };
 
-
+  const handleAbortDispatch = async () => {
+    if (numVal < 0 || isSubmitting) return;
+    setIsSubmitting(true);
+    try {
+      await onConfirmComplete(numVal, stoppage, 'not completed', true);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   const handleSaveDelayInProgress = async () => {
     if (numVal <= 0 || isSubmitting) return;
     setIsSubmitting(true);
     try {
-      await onConfirmComplete(numVal, stoppage, 'not completed');
+      await onConfirmComplete(numVal, stoppage, 'not completed', false);
     } finally {
       setIsSubmitting(false);
     }
@@ -508,155 +516,108 @@ export const BulkCompleteModal: React.FC<BulkCompleteModalProps> = ({
             </div>
 
             {isProblem ? (
-
               <p className="text-[11px] text-rose-300/90 pt-1 leading-snug">
-
                 {language === 'ar'
-
-                  ? 'سيتم تسجيل التوقف في الشيت كـ "غير مكتمل". ستبقى الشاحنة في الصومعة حتى يتم حل العطل واختيار "NONE".'
-
-                  : 'Stoppage will be saved to Google Sheets as "not completed". This truck will remain active on the silo until marked as "NONE".'}
-
+                  ? 'حالة العطل نشطة: الوزن النهائي مقفل. لإتمام شحنة مكتملة وتفريغ الصومعة، يجب معالجة العطل أولاً واختيار "NONE".'
+                  : 'Active stoppage selected: Weigh-out is locked. To complete loading and free the silo, the issue must be resolved and condition set to "NONE".'}
               </p>
-
             ) : (
-
               <p className="text-[11px] text-emerald-300/90 pt-1 leading-snug">
-
                 {language === 'ar'
-
-                  ? 'سيتم إتمام الشحنة كـ "مكتملة" بنجاح، وتفريغ الصومعة للشاحنة التالية.'
-
-                  : 'Loading will be completed with status "completed" and this silo will be freed for the next dispatch.'}
-
+                  ? 'حالة الصومعة طبيعية (NONE): سيتم إتمام الشحنة كـ "مكتملة" بنجاح، وتفريغ الصومعة للشاحنة التالية.'
+                  : 'Silo condition normal (NONE): Loading will be completed with status "completed" and this silo will be freed for the next dispatch.'}
               </p>
-
             )}
-
           </div>
 
-
-
-          {/* Explanatory banner about Stoppage Reason preservation */}
-
+          {/* Plant Guard banner when problem is active */}
           {isProblem && (
-
-            <div className="p-3 rounded-xl bg-amber-950/40 border border-amber-500/40 text-xs text-amber-200 flex items-start gap-2.5">
-
-              <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
-
-              <div className="space-y-0.5">
-
-                <span className="font-bold text-amber-300 block">
-
-                  {language === 'ar' ? `سبب التوقف المُسجل: ${stoppage}` : `Recorded Stoppage: ${stoppage}`}
-
-                </span>
-
-                <p className="text-[11px] text-amber-300/80 leading-relaxed">
-
-                  {language === 'ar'
-
-                    ? `سيتم حفظ سبب التوقف (${stoppage}) في العمود R دون الرجوع إلى NONE، مع توثيق مدة العطل بالشيت.`
-
-                    : `Column R will permanently record "${stoppage}" (will NOT revert to NONE), documenting the delay downtime.`}
-
-                </p>
-
+            <div className="p-3 rounded-2xl bg-amber-950/60 border border-amber-500/60 text-xs text-amber-200 space-y-2">
+              <div className="flex items-center gap-2 text-amber-300 font-bold">
+                <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0" />
+                <span>{language === 'ar' ? `عطل قيد الحدوث: ${stoppage}` : `Active Stoppage Open: ${stoppage}`}</span>
               </div>
-
+              <p className="text-[11px] text-amber-200/90 leading-relaxed m-0">
+                {language === 'ar'
+                  ? 'في مصنع الأسمنت، لا يمكن وزن الشاحنة أثناء استمرار العطل. لإتمام شحنة مكتملة، اختر "NONE" بعد إصلاح العطل. إذا تعذر إكمال التحميل وتوجب مغادرة الشاحنة، اختر "إلغاء التذكرة كشحنة جزئية" لتفريغ الصومعة.'
+                  : 'In cement plant operations, a truck cannot weigh out while equipment is actively stopped. To weigh out a completed dispatch, select "NONE" once resolved. If loading cannot continue and the truck must leave, choose "Abort Dispatch as Partial" below.'}
+              </p>
             </div>
-
           )}
 
-
-
           {/* Action Buttons */}
-
           <div className="space-y-2 pt-1">
-
-            <div className="flex items-center gap-2">
-
-              <button
-
-                type="button"
-
-                onClick={onClose}
-
-                className="py-3 px-4 rounded-xl bg-slate-800 hover:bg-slate-750 text-slate-300 font-bold text-xs transition cursor-pointer"
-
-              >
-
-                {language === 'ar' ? 'إلغاء' : 'Cancel'}
-
-              </button>
-
-
-
-              {/* Primary Action: Complete & Weigh-Out (Frees silo, keeps stoppage reason) */}
-
-              <button
-
-                type="button"
-
-                disabled={numVal <= 0 || isJobOwnedByOther || isSubmitting}
-
-                onClick={handleCompleteAndWeighOut}
-
-                className="flex-1 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 text-white font-black text-xs transition shadow-lg shadow-emerald-600/30 active:scale-95 flex items-center justify-center gap-2 cursor-pointer"
-
-              >
-
-                <CheckCircle2 className="w-4 h-4" />
-
+            {/* If there was a prior stoppage during this job that was resolved */}
+            {!isProblem && (job.totalDowntimeSeconds || 0) > 0 && (
+              <div className="p-2.5 rounded-xl bg-emerald-950/40 border border-emerald-500/40 text-xs text-emerald-300 flex items-center gap-2">
+                <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
                 <span>
-
-                  {isProblem
-
-                    ? (language === 'ar' ? `إتمام وتفريغ الصومعة (مع توثيق ${stoppage})` : `Complete & Weigh-Out (Log ${stoppage})`)
-
-                    : (language === 'ar' ? 'إتمام التحميل وتفريغ الصومعة' : 'Complete & Weigh-Out (Free Silo)')}
-
-                </span>
-
-              </button>
-
-            </div>
-
-
-
-            {/* Secondary Action (Only if Stoppage): Keep Active / Delay In Progress */}
-
-            {isProblem && (
-
-              <button
-
-                type="button"
-
-                disabled={numVal <= 0 || isSubmitting}
-
-                onClick={handleSaveDelayInProgress}
-
-                className="w-full py-2.5 rounded-xl bg-rose-600/20 hover:bg-rose-600/30 border border-rose-500/50 text-rose-300 font-bold text-xs transition active:scale-95 flex items-center justify-center gap-2 cursor-pointer"
-
-              >
-
-                <AlertTriangle className="w-3.5 h-3.5 text-rose-400" />
-
-                <span>
-
                   {language === 'ar'
-
-                    ? `حفظ كعطل قيد الانتظار (${stoppage}) - إبقاء الشاحنة في الصومعة`
-
-                    : `Save Delay In-Progress (${stoppage}) - Keep Silo Active`}
-
+                    ? `تم حل العطل السابق بنجاح — وقت التوقف الموثق: ${downtimeMinutes} دقيقة`
+                    : `Prior stoppage resolved — Logged downtime: ${downtimeMinutes}m`}
                 </span>
-
-              </button>
-
+              </div>
             )}
 
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={onClose}
+                className="py-3 px-4 rounded-xl bg-slate-800 hover:bg-slate-750 text-slate-300 font-bold text-xs transition cursor-pointer"
+              >
+                {language === 'ar' ? 'إلغاء' : 'Cancel'}
+              </button>
+
+              {isProblem ? (
+                /* Abort / Partial Load Action */
+                <button
+                  type="button"
+                  disabled={numVal < 0 || isJobOwnedByOther || isSubmitting}
+                  onClick={handleAbortDispatch}
+                  className="flex-1 py-3 rounded-xl bg-rose-600 hover:bg-rose-500 disabled:opacity-40 text-white font-black text-xs transition shadow-lg shadow-rose-600/30 active:scale-95 flex items-center justify-center gap-2 cursor-pointer"
+                >
+                  {isSubmitting ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <AlertTriangle className="w-4 h-4" />
+                  )}
+                  <span>
+                    {language === 'ar'
+                      ? `إلغاء التذكرة كشحنة جزئية (${numVal} طن)`
+                      : `Abort Dispatch as Partial (${numVal} t)`}
+                  </span>
+                </button>
+              ) : (
+                /* Primary Action: Complete & Weigh-Out */
+                <button
+                  type="button"
+                  disabled={numVal <= 0 || isJobOwnedByOther || isSubmitting}
+                  onClick={handleCompleteAndWeighOut}
+                  className="flex-1 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 text-white font-black text-xs transition shadow-lg shadow-emerald-600/30 active:scale-95 flex items-center justify-center gap-2 cursor-pointer"
+                >
+                  {isSubmitting ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <CheckCircle2 className="w-4 h-4" />
+                  )}
+                  <span>
+                    {language === 'ar' ? 'إتمام التحميل وتفريغ الصومعة' : 'Complete & Weigh-Out (Free Silo)'}
+                  </span>
+                </button>
+              )}
+            </div>
+
+            {/* Lock indicator when isProblem is true */}
+            {isProblem && (
+              <div className="w-full py-2.5 px-3 rounded-xl bg-slate-950/70 border border-slate-800 text-slate-500 text-xs flex items-center justify-center gap-2 select-none">
+                <Lock className="w-3.5 h-3.5 text-slate-500 shrink-0" />
+                <span>
+                  {language === 'ar'
+                    ? 'الوزن النهائي مقفل (اختر NONE بعد حل العطل للإتمام)'
+                    : 'Weigh-Out Locked (Select NONE when resolved to complete)'}
+                </span>
+              </div>
+            )}
           </div>
 
         </form>

@@ -90,7 +90,7 @@ interface BulkAppContextType {
 
   resolveStoppage: (siloId: BulkSiloId) => Promise<boolean>;
 
-  completeJob: (siloId: BulkSiloId, actualTonnes: number, stoppageReason?: string, status?: string) => Promise<boolean>;
+  completeJob: (siloId: BulkSiloId, actualTonnes: number, stoppageReason?: string, status?: string, abortDispatch?: boolean) => Promise<boolean>;
 
   cancelJob: (siloId: BulkSiloId, reason?: string) => Promise<boolean>;
 
@@ -1072,7 +1072,9 @@ export const BulkAppProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
     stoppageReason?: string,
 
-    status?: string
+    status?: string,
+
+    abortDispatch?: boolean
 
   ): Promise<boolean> => {
 
@@ -1173,6 +1175,8 @@ export const BulkAppProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
         status: finalStatus,
 
+        abortDispatch: Boolean(abortDispatch),
+
         id: currentUser.id,
 
         userId: currentUser.id,
@@ -1195,9 +1199,9 @@ export const BulkAppProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
 
 
-      if (isProblem) {
+      if (isProblem && !abortDispatch) {
 
-        // Stoppage problem recorded: KEEP ACTIVE on silo, update status to STOPPAGE
+        // Stoppage problem recorded and kept active: KEEP ACTIVE on silo, update status to STOPPAGE
 
         setActiveJobs(prev => {
 
