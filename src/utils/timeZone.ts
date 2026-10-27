@@ -56,22 +56,32 @@ export function getSaudiCurrentShift(): 'Shift A' | 'Shift B' | 'Shift C' {
  * Calculates duration between two HH:MM or HH:MM:SS strings in minutes.
  * Handles midnight crossing correctly (adds 24 hours when end < start).
  */
+/**
+ * Explicitly parses a 24-hour wall-clock time string (HH:mm:ss or HH:mm) into seconds from midnight.
+ * Clock times are strictly hours and minutes (never ambiguously parsed as mm:ss).
+ */
+export function parseClockTimeToSeconds(clockTimeStr?: string): number {
+  if (!clockTimeStr) return -1;
+  const str = String(clockTimeStr).trim();
+  if (!str || str === 'IN PROGRESS' || str === '-') return -1;
+  
+  const m = str.match(/(\d{1,2}):(\d{2})(?::(\d{2}))?/);
+  if (!m) return -1;
+  const h = parseInt(m[1], 10);
+  const min = parseInt(m[2], 10);
+  const sec = m[3] ? parseInt(m[3], 10) : 0;
+  return h * 3600 + min * 60 + sec;
+}
+
+/**
+ * Calculates duration between two clock times in minutes.
+ * Handles midnight crossing correctly (adds 24 hours when end < start).
+ */
 export function calculateDurationMinutes(start: string, end: string): number {
   if (!start || !end) return 0;
-  const parseSec = (t: string) => {
-    const parts = t.trim().split(':').map(Number);
-    if (parts.length === 2) {
-      if (parts[0] >= 5) {
-        return parts[0] * 60 + parts[1]; // mm:ss
-      }
-      return parts[0] * 3600 + parts[1] * 60; // HH:mm
-    }
-    if (parts.length === 3) return parts[0] * 3600 + parts[1] * 60 + parts[2];
-    return 0;
-  };
-
-  const startSec = parseSec(start);
-  let endSec = parseSec(end);
+  const startSec = parseClockTimeToSeconds(start);
+  let endSec = parseClockTimeToSeconds(end);
+  if (startSec < 0 || endSec < 0) return 0;
 
   if (endSec < startSec) {
     endSec += 24 * 3600; // Crossed midnight

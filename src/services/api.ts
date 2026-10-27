@@ -78,7 +78,9 @@ export function normalizeActiveJob(raw: any, fallbackSiloId?: BulkSiloId): BulkA
     conflictResolution: raw.conflictResolution || '',
     status,
     stoppageReason: raw.stoppageReason || raw.activeProblem || '',
-    stoppageStartEpochMs: Number(raw.stoppageStartEpochMs || raw.activeStoppageStartedAt) || undefined
+    stoppageStartEpochMs: Number(raw.stoppageStartEpochMs || raw.activeStoppageStartedAt) || undefined,
+    totalDowntimeSeconds: Number(raw.totalDowntimeSeconds || raw.totalPausedSeconds || 0),
+    downtimeLog: raw.downtimeLog || []
   };
 }
 

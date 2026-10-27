@@ -4,6 +4,7 @@ import { BulkDashboardMetrics, BulkSiloId } from '../types';
 import { fetchBulkDashboardMetrics } from '../services/api';
 import { BULK_SILO_IDS, BULK_SILOS } from '../utils/constants';
 import { formatElapsedSeconds } from '../utils/timeZone';
+import { calculateBulkSessionElapsed } from '../utils/timerUtils';
 import {
   Scale,
   Truck,
@@ -171,10 +172,7 @@ export const BulkManagerDashboard: React.FC = () => {
             const activeJob = activeJobs[id];
             const isOccupied = !!activeJob;
 
-            let elapsedSec = 0;
-            if (activeJob) {
-              elapsedSec = Math.max(0, Math.floor((activeNowMs - activeJob.startEpochMs) / 1000));
-            }
+            const session = calculateBulkSessionElapsed(activeJob, activeNowMs);
 
             return (
               <div
@@ -197,9 +195,16 @@ export const BulkManagerDashboard: React.FC = () => {
                       <span className="font-mono font-bold text-amber-400 truncate">
                         {activeJob.truckNumber} (#{activeJob.receiptNumber})
                       </span>
-                      <span className="font-mono font-bold text-slate-200 shrink-0 ml-1">
-                        {formatElapsedSeconds(elapsedSec)}
-                      </span>
+                      <div className="text-right shrink-0 ml-1 font-mono">
+                        <span className={`font-bold block ${session.isStopped ? 'text-amber-400' : 'text-slate-200'}`}>
+                          {session.netFormatted}
+                        </span>
+                        {session.isStopped && (
+                          <span className="text-[9px] text-red-400 font-bold block">
+                            +{session.currentStoppageFormatted}
+                          </span>
+                        )}
+                      </div>
                     </div>
 
                     <div className="flex items-center justify-between text-[10px] sm:text-[11px] text-slate-400">

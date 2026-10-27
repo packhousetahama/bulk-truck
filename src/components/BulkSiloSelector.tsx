@@ -3,6 +3,7 @@ import { BulkSiloId, CementType } from '../types';
 import { BULK_SILO_IDS, BULK_SILOS, BULK_CEMENT_COMPATIBLE_SILOS } from '../utils/constants';
 import { useBulkApp } from '../context/BulkAppContext';
 import { formatElapsedSeconds } from '../utils/timeZone';
+import { calculateBulkSessionElapsed } from '../utils/timerUtils';
 import { CheckCircle2, AlertTriangle, Clock, Truck, Lock } from 'lucide-react';
 
 interface BulkSiloSelectorProps {
@@ -73,12 +74,7 @@ export const BulkSiloSelector: React.FC<BulkSiloSelectorProps> = ({
           const isOccupied = !!activeJob;
           const colors = getCementColor(silo.cementType);
 
-          // Calculate active job elapsed time
-          let elapsedSec = 0;
-          if (activeJob && activeJob.startEpochMs) {
-            const diff = Math.floor((activeNowMs - activeJob.startEpochMs) / 1000);
-            elapsedSec = isNaN(diff) || diff < 0 ? 0 : diff;
-          }
+          const session = calculateBulkSessionElapsed(activeJob, activeNowMs);
 
           const isDisabled = (!isCompatible && !showAllOverride) || isOccupied;
 
@@ -133,9 +129,11 @@ export const BulkSiloSelector: React.FC<BulkSiloSelectorProps> = ({
                         <Truck className="w-3 h-3 shrink-0" />
                         <span className="font-mono truncate">{activeJob.truckNumber}</span>
                       </span>
-                      <span className="flex items-center gap-1 text-slate-300 font-mono text-[9px] sm:text-[10px] shrink-0">
+                      <span className={`flex items-center gap-1 font-mono text-[9px] sm:text-[10px] shrink-0 ${
+                        session.isStopped ? 'text-amber-400' : 'text-slate-300'
+                      }`}>
                         <Clock className="w-3 h-3 text-amber-400" />
-                        {formatElapsedSeconds(elapsedSec)}
+                        {session.netFormatted}
                       </span>
                     </div>
                     {activeJob.status === 'STOPPAGE' ? (

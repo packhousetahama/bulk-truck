@@ -9,6 +9,7 @@ import { BulkStoppageModal } from './BulkStoppageModal';
 import { BulkCompleteModal } from './BulkCompleteModal';
 import { BulkUserModal } from './BulkUserModal';
 import { formatElapsedSeconds } from '../utils/timeZone';
+import { calculateBulkSessionElapsed } from '../utils/timerUtils';
 import {
   Camera,
   Loader2,
@@ -318,13 +319,7 @@ export const BulkWorkflowView: React.FC = () => {
             const isRunning = Boolean(job && job.status !== 'STOPPAGE');
             const isStopped = Boolean(job && job.status === 'STOPPAGE');
 
-            const elapsedSec = job
-              ? Math.max(0, Math.floor((activeNowMs - job.startEpochMs) / 1000))
-              : 0;
-
-            const downtimeSec = isStopped && job?.stoppageStartEpochMs
-              ? Math.max(0, Math.floor((activeNowMs - job.stoppageStartEpochMs) / 1000))
-              : 0;
+            const session = calculateBulkSessionElapsed(job, activeNowMs);
 
             return (
               <div
@@ -399,9 +394,16 @@ export const BulkWorkflowView: React.FC = () => {
                   )}
 
                   {job ? (
-                    <span className="font-mono text-xs font-black text-slate-100">
-                      {isStopped ? formatElapsedSeconds(downtimeSec) : formatElapsedSeconds(elapsedSec)}
-                    </span>
+                    <div className="text-right">
+                      <span className={`font-mono text-xs font-black block ${isStopped ? 'text-amber-400' : 'text-slate-100'}`}>
+                        {session.netFormatted}
+                      </span>
+                      {isStopped && (
+                        <span className="font-mono text-[9px] font-bold text-red-400 block">
+                          +{session.currentStoppageFormatted}
+                        </span>
+                      )}
+                    </div>
                   ) : (
                     <span className="text-[10px] text-slate-500 font-bold hover:text-amber-400">
                       {language === 'ar' ? '+ تحميل' : '+ Load'}
@@ -433,7 +435,7 @@ export const BulkWorkflowView: React.FC = () => {
             if (!job) return null;
             const isCurrent = effectiveActiveSiloId === sId && !showIntakeForm && !pendingTicket;
             const isStopped = job.status === 'STOPPAGE';
-            const elapsed = Math.max(0, Math.floor((activeNowMs - job.startEpochMs) / 1000));
+            const tabSession = calculateBulkSessionElapsed(job, activeNowMs);
 
             return (
               <button
@@ -456,7 +458,7 @@ export const BulkWorkflowView: React.FC = () => {
                   isCurrent ? 'bg-slate-950' : isStopped ? 'bg-red-400 animate-pulse' : 'bg-amber-400 animate-ping'
                 }`} />
                 <span>{BULK_SILOS[sId].nameEn}</span>
-                <span className="font-mono text-[11px] opacity-90">{formatElapsedSeconds(elapsed)}</span>
+                <span className="font-mono text-[11px] opacity-90">{tabSession.netFormatted}</span>
               </button>
             );
           })}
@@ -503,32 +505,59 @@ export const BulkWorkflowView: React.FC = () => {
             </span>
           </div>
 
-          {/* Big High-Contrast Elapsed Timer */}
-          <div className="bg-slate-950/90 rounded-2xl p-5 border border-slate-800 flex flex-col items-center justify-center text-center">
-            <span className="text-[11px] font-bold uppercase tracking-widest text-slate-400 mb-1">
-              {language === 'ar' ? 'الوقت الإجمالي المنقضي' : 'Gross Elapsed Time'}
-            </span>
-            <div className="text-5xl sm:text-6xl font-black font-mono tracking-tight text-amber-400 drop-shadow-md">
-              {formatElapsedSeconds(
-                Math.max(0, Math.floor((activeNowMs - currentActiveJob.startEpochMs) / 1000))
-              )}
-            </div>
-
-            {/* Stoppage Banner */}
-            {currentActiveJob.status === 'STOPPAGE' && (
-              <div className="mt-3 w-full bg-red-950/60 border border-red-500/50 rounded-xl p-2.5 flex items-center justify-between text-xs text-red-200">
-                <div className="flex items-center gap-2">
-                  <AlertTriangle className="w-4 h-4 text-red-400 shrink-0" />
-                  <span className="font-semibold">{currentActiveJob.stoppageReason || 'Stoppage'}</span>
+          {/* Big High-Contrast Net Loading Timer */}
+          {(() => {
+            const activeSession = calculateBulkSessionElapsed(currentActiveJob, activeNowMs);
+            return (
+              <div className="bg-slate-950/90 rounded-2xl p-5 border border-slate-800 flex flex-col items-center justify-center text-center">
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="text-[11px] font-bold uppercase tracking-widest text-slate-400">
+                    {activeSession.isStopped
+                      ? (language === 'ar' ? 'وقت التحميل الصافي (متوقف مؤقتاً)' : 'Net Loading Time (Paused)')
+                      : (language === 'ar' ? 'وقت التحميل الصافي المباشر' : 'Net Loading Time')}
+                  </span>
+                  {activeSession.isStopped && (
+                    <span className="px-1.5 py-0.5 rounded text-[9px] font-black uppercase bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                      {language === 'ar' ? 'مجمد' : 'FROZEN'}
+                    </span>
+                  )}
                 </div>
-                <span className="font-mono font-bold text-red-300">
-                  {currentActiveJob.stoppageStartEpochMs
-                    ? formatElapsedSeconds(Math.max(0, Math.floor((activeNowMs - currentActiveJob.stoppageStartEpochMs) / 1000)))
-                    : ''}
-                </span>
+                <div className={`text-5xl sm:text-6xl font-black font-mono tracking-tight drop-shadow-md ${
+                  activeSession.isStopped ? 'text-amber-300' : 'text-emerald-400'
+                }`}>
+                  {activeSession.netFormatted}
+                </div>
+
+                {/* Stoppage Banner & Live Downtime Counter */}
+                {activeSession.isStopped && (
+                  <div className="mt-3 w-full bg-red-950/60 border border-red-500/50 rounded-xl p-2.5 flex items-center justify-between text-xs text-red-200 animate-pulse">
+                    <div className="flex items-center gap-2">
+                      <AlertTriangle className="w-4 h-4 text-red-400 shrink-0" />
+                      <span className="font-bold">{currentActiveJob.stoppageReason || 'Stoppage'}</span>
+                    </div>
+                    <div className="text-right">
+                      <span className="text-[10px] text-red-300 block font-sans uppercase">{language === 'ar' ? 'مدة التوقف الحالية' : 'Current Downtime'}</span>
+                      <span className="font-mono font-bold text-red-300 text-sm">
+                        {activeSession.currentStoppageFormatted}
+                      </span>
+                    </div>
+                  </div>
+                )}
+
+                {/* Authoritative Dual Timing Breakdown */}
+                <div className="mt-3 pt-2.5 border-t border-slate-800/80 w-full grid grid-cols-2 gap-2 text-xs font-mono">
+                  <div className="bg-slate-900/60 p-2 rounded-xl text-left">
+                    <span className="text-[10px] text-slate-400 block font-sans uppercase">{language === 'ar' ? 'الوقت الإجمالي المنقضي' : 'Gross Elapsed'}</span>
+                    <span className="font-bold text-slate-200">{activeSession.grossFormatted}</span>
+                  </div>
+                  <div className="bg-slate-900/60 p-2 rounded-xl text-right">
+                    <span className="text-[10px] text-slate-400 block font-sans uppercase">{language === 'ar' ? 'إجمالي وقت التوقف' : 'Total Downtime'}</span>
+                    <span className="font-bold text-amber-400">{activeSession.downtimeFormatted}</span>
+                  </div>
+                </div>
               </div>
-            )}
-          </div>
+            );
+          })()}
 
           {/* Truck and Material Details */}
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-xs">
