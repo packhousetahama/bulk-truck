@@ -3,6 +3,7 @@ import { useBulkApp } from '../context/BulkAppContext';
 import { getSaudiCurrentTimeOnly, getSaudiCurrentShift } from '../utils/timeZone';
 import { BULK_SHEET_URL } from '../utils/constants';
 import { useBulkOutbox } from '../services/offlineQueue';
+import { BulkSyncStatus } from './BulkSyncStatus';
 import {
   Truck,
   RotateCw,
@@ -200,14 +201,9 @@ export const BulkHeader: React.FC<BulkHeaderProps> = ({ onOpenUserModal }) => {
             )}
           </nav>
 
-          {/* Connection status indicator & Offline Sync */}
-          <div className="flex items-center gap-1.5 text-[10px] sm:text-[11px] text-slate-400 shrink-0">
-            {pending > 0 && (
-              <span className="bg-amber-500/20 text-amber-300 border border-amber-500/40 px-2 py-0.5 rounded-full font-mono text-[10px] flex items-center gap-1">
-                <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-ping" />
-                <span>{syncing ? (language === 'ar' ? 'مزامنة...' : 'Syncing...') : `${pending} ${language === 'ar' ? 'معلق' : 'Queued'}`}</span>
-              </span>
-            )}
+          {/* Connection status indicator & Interactive Offline Sync */}
+          <div className="flex items-center gap-2 text-[10px] sm:text-[11px] text-slate-400 shrink-0">
+            <BulkSyncStatus />
             {isOnline ? (
               <span className="flex items-center gap-1 text-emerald-400 font-medium">
                 <Wifi className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
@@ -216,7 +212,7 @@ export const BulkHeader: React.FC<BulkHeaderProps> = ({ onOpenUserModal }) => {
             ) : (
               <span className="flex items-center gap-1 text-red-400 font-semibold animate-pulse">
                 <WifiOff className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
-                <span>{language === 'ar' ? "غير متصل (محلي)" : "Offline (Local)"}</span>
+                <span className="hidden xs:inline">{language === 'ar' ? "غير متصل (محلي)" : "Offline"}</span>
               </span>
             )}
           </div>

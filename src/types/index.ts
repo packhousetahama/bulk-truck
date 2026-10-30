@@ -94,6 +94,9 @@ export interface BulkEntry {
   conflictResolution?: string;
   stoppageReason?: string;
   comments?: string;
+  entrySource?: 'ONLINE' | 'OFFLINE';
+  reviewStatus?: 'NORMAL' | 'NEEDS REVIEW' | 'REVIEWED';
+  reviewNote?: string;
 }
 
 export interface BulkSiloMetric {

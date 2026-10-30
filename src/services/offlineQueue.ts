@@ -238,6 +238,7 @@ export async function flushBulkOutbox(): Promise<void> {
       if (data && (data.ok || data.status === 'success' || data.success)) {
         items = items.filter(i => i.id !== item.id);
         delivered++;
+        if (data.needsReview) flaggedNotice++;
       } else if (data && data.error && isDuplicateError(String(data.error))) {
         items = items.filter(i => i.id !== item.id);
         delivered++;
