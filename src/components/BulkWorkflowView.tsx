@@ -159,9 +159,11 @@ export const BulkWorkflowView: React.FC = () => {
     if (ticket.conflictDetected) {
       setIsConflictModalOpen(true);
     } else {
-      // Auto-assign available compatible silo
+      // Auto-assign available compatible silo (honoring pre-selected silo if available and compatible)
       const compSilos = BULK_CEMENT_COMPATIBLE_SILOS[ticket.cementType] || BULK_SILO_IDS;
-      const idleSilo = compSilos.find(sId => !activeJobs[sId]);
+      const idleSilo = (selectedSiloId && !activeJobs[selectedSiloId] && compSilos.includes(selectedSiloId))
+        ? selectedSiloId
+        : compSilos.find(sId => !activeJobs[sId]);
       setSelectedSiloId(idleSilo || ticket.proposedSiloId || compSilos[0] || 'NEW_5');
     }
   };
@@ -329,42 +331,57 @@ export const BulkWorkflowView: React.FC = () => {
     }
   };
 
+  // State separation: Are we inspecting a new scanned ticket vs an active running silo?
+  const isViewingPendingTicket = Boolean(pendingTicket);
+  const isViewingActiveJob = Boolean(currentActiveJob && !showIntakeForm && !pendingTicket);
+  const isShowingForm = isViewingPendingTicket || isViewingActiveJob;
+  const isShowingScanIntake = (showIntakeForm || !hasActiveJobs) && !pendingTicket;
+
   // Active session timer metrics
-  const activeSession = currentActiveJob
+  const activeSession = isViewingActiveJob && currentActiveJob
     ? calculateBulkSessionElapsed(currentActiveJob, activeNowMs)
     : null;
 
   // Determine current cement type for compatible silo choice
-  const activeCementType: CementType = currentActiveJob
+  const activeCementType: CementType = isViewingActiveJob && currentActiveJob
     ? currentActiveJob.cementType
     : pendingTicket?.cementType || 'OPC';
 
   const compatibleSilos = BULK_CEMENT_COMPATIBLE_SILOS[activeCementType] || BULK_SILO_IDS;
 
-  // Active form data binding (from active job or pending ticket)
-  const isViewingForm = Boolean(currentActiveJob || pendingTicket);
-
-  const displaySiloId: BulkSiloId = currentActiveJob
+  const displaySiloId: BulkSiloId = isViewingActiveJob && currentActiveJob
     ? currentActiveJob.siloId
-    : selectedSiloId || compatibleSilos[0] || 'NEW_5';
+    : selectedSiloId || compatibleSilos.find(sId => !activeJobs[sId]) || compatibleSilos[0] || 'NEW_5';
 
-  const displayReceipt = currentActiveJob?.receiptNumber || pendingTicket?.receiptNumber || '';
-  const displayPlate = currentActiveJob?.truckNumber || pendingTicket?.vehicleNumber || '';
-  const displayAuthTonnes = currentActiveJob?.authorisedTonnes ?? pendingTicket?.authorisedTonnes ?? 30;
-  const displayDriverName = currentActiveJob?.driverName || pendingTicket?.driverName || '';
-  const displayDriverPhone = currentActiveJob?.driverPhone || pendingTicket?.driverPhone || '';
-  const displayDriverId = currentActiveJob?.driverId || pendingTicket?.driverId || '';
-  const displayOperator = currentActiveJob?.operator || (currentUser?.role === 'admin' ? 'ADMIN' : (currentUser?.name || 'Operator'));
-  const displayStartTime = currentActiveJob?.startTime || (pendingTicket ? getSaudiCurrentTimeOnly() : '--:--:--');
-  const displayEndTime = currentActiveJob?.status === 'STOPPAGE'
-    ? 'PAUSED'
-    : currentActiveJob
-    ? 'IN PROGRESS'
+  const displayReceipt = isViewingActiveJob && currentActiveJob
+    ? currentActiveJob.receiptNumber
+    : pendingTicket?.receiptNumber || '';
+  const displayPlate = isViewingActiveJob && currentActiveJob
+    ? currentActiveJob.truckNumber
+    : pendingTicket?.vehicleNumber || '';
+  const displayAuthTonnes = isViewingActiveJob && currentActiveJob
+    ? currentActiveJob.authorisedTonnes
+    : (pendingTicket?.authorisedTonnes ?? 30);
+  const displayDriverName = isViewingActiveJob && currentActiveJob
+    ? currentActiveJob.driverName
+    : pendingTicket?.driverName || '';
+  const displayDriverPhone = isViewingActiveJob && currentActiveJob
+    ? currentActiveJob.driverPhone
+    : pendingTicket?.driverPhone || '';
+  const displayDriverId = isViewingActiveJob && currentActiveJob
+    ? currentActiveJob.driverId
+    : pendingTicket?.driverId || '';
+  const displayOperator = isViewingActiveJob && currentActiveJob
+    ? currentActiveJob.operator
+    : (currentUser?.role === 'admin' ? 'ADMIN' : (currentUser?.name || 'Operator'));
+  const displayStartTime = isViewingActiveJob && currentActiveJob
+    ? currentActiveJob.startTime
+    : (pendingTicket ? getSaudiCurrentTimeOnly() : '--:--:--');
+  const displayEndTime = isViewingActiveJob && currentActiveJob
+    ? (currentActiveJob.status === 'STOPPAGE' ? 'PAUSED' : 'IN PROGRESS')
     : '--:--:--';
-  const displayStatus = currentActiveJob
-    ? currentActiveJob.status === 'STOPPAGE'
-      ? 'STOPPAGE'
-      : 'LOADING'
+  const displayStatus = isViewingActiveJob && currentActiveJob
+    ? (currentActiveJob.status === 'STOPPAGE' ? 'STOPPAGE' : 'LOADING')
     : pendingTicket
     ? 'READY TO START'
     : 'IDLE';
@@ -422,6 +439,7 @@ export const BulkWorkflowView: React.FC = () => {
                     setIsUserModalOpen(true);
                     return;
                   }
+                  setPendingTicket(null);
                   setShowIntakeForm(true);
                 }}
                 className="px-2.5 py-1 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-[11px] flex items-center gap-1 transition shadow-sm cursor-pointer"
@@ -583,6 +601,7 @@ export const BulkWorkflowView: React.FC = () => {
                   setIsUserModalOpen(true);
                   return;
                 }
+                setPendingTicket(null);
                 setShowIntakeForm(true);
               }}
               className={`px-3 py-1.5 rounded-xl border text-xs font-bold transition flex items-center gap-1.5 shrink-0 cursor-pointer ${
@@ -599,7 +618,7 @@ export const BulkWorkflowView: React.FC = () => {
       )}
 
       {/* 3. HOME VIEW: SCAN QR (No Quick Slips) */}
-      {!isViewingForm && (showIntakeForm || !currentActiveJob) && (
+      {isShowingScanIntake && (
         <div className="bg-slate-900 border border-slate-800 rounded-3xl p-5 shadow-xl space-y-4">
           {hasActiveJobs && (
             <div className="flex items-center justify-between pb-3 border-b border-slate-800">
@@ -613,7 +632,10 @@ export const BulkWorkflowView: React.FC = () => {
               </div>
               <button
                 type="button"
-                onClick={() => setShowIntakeForm(false)}
+                onClick={() => {
+                  setShowIntakeForm(false);
+                  setPendingTicket(null);
+                }}
                 className="text-xs text-slate-300 hover:text-white flex items-center gap-1 font-bold underline cursor-pointer"
               >
                 <ArrowLeft className="w-3.5 h-3.5" />
@@ -771,21 +793,21 @@ export const BulkWorkflowView: React.FC = () => {
       )}
 
       {/* 4. THE CLEAN 12-FIELD LOADING WORKFLOW CARD */}
-      {isViewingForm && (
+      {isShowingForm && (
         <div className="bg-slate-900 border border-slate-800 rounded-3xl p-5 shadow-2xl space-y-4">
           {/* Header Bar */}
           <div className="flex items-center justify-between border-b border-slate-800 pb-3">
             <div className="flex items-center gap-2">
               <span className={`w-3 h-3 rounded-full ${
-                currentActiveJob?.status === 'STOPPAGE'
+                isViewingActiveJob && currentActiveJob?.status === 'STOPPAGE'
                   ? 'bg-red-400 animate-pulse'
-                  : currentActiveJob
+                  : isViewingActiveJob
                   ? 'bg-amber-400 animate-ping'
                   : 'bg-emerald-400'
               }`} />
               <div>
                 <span className="text-[10px] font-black uppercase text-amber-400 tracking-wider block">
-                  {currentActiveJob
+                  {isViewingActiveJob && currentActiveJob
                     ? currentActiveJob.status === 'STOPPAGE'
                       ? (language === 'ar' ? 'توقف / عطل بالتحميل' : 'STOPPAGE IN PROGRESS')
                       : (language === 'ar' ? 'تحميل مباشر قيد التنفيذ' : 'ACTIVE LOADING IN PROGRESS')
@@ -797,7 +819,7 @@ export const BulkWorkflowView: React.FC = () => {
               </div>
             </div>
 
-            {pendingTicket && !currentActiveJob && (
+            {isViewingPendingTicket && (
               <button
                 type="button"
                 onClick={() => {
@@ -815,7 +837,7 @@ export const BulkWorkflowView: React.FC = () => {
           </div>
 
           {/* DUPLICATE RECEIPT WARNING BANNER */}
-          {isDuplicateReceipt && pendingTicket && (
+          {isDuplicateReceipt && isViewingPendingTicket && (
             <div className="p-4 rounded-2xl bg-red-950/80 border-2 border-red-500/80 flex items-start gap-3 text-xs text-red-200 shadow-xl shadow-red-950/50 animate-in fade-in">
               <div className="p-2 rounded-xl bg-red-900/80 text-red-300 shrink-0 mt-0.5">
                 <Ban className="w-5 h-5" />
@@ -830,7 +852,7 @@ export const BulkWorkflowView: React.FC = () => {
                   </span>
                 </div>
                 <p className="text-xs text-red-200/90 leading-relaxed">
-                  Receipt <strong className="font-mono text-red-100 font-bold">#{pendingTicket.receiptNumber}</strong>
+                  Receipt <strong className="font-mono text-red-100 font-bold">#{pendingTicket?.receiptNumber}</strong>
                   {duplicateRecorded
                     ? ` has already been recorded in Google Sheets on ${duplicateRecorded.date} by ${duplicateRecorded.operator} (${duplicateRecorded.siloName}).`
                     : duplicateActive
@@ -866,7 +888,7 @@ export const BulkWorkflowView: React.FC = () => {
           )}
 
           {/* LIVE TIMER HUD (When session is active) */}
-          {activeSession && currentActiveJob && (
+          {activeSession && isViewingActiveJob && currentActiveJob && (
             <div className="bg-slate-950/90 rounded-2xl p-4 border border-slate-800 flex flex-col items-center justify-center text-center">
               <div className="flex items-center gap-2 mb-1">
                 <span className="text-[11px] font-bold uppercase tracking-widest text-slate-400">
@@ -952,9 +974,9 @@ export const BulkWorkflowView: React.FC = () => {
                     <button
                       key={sId}
                       type="button"
-                      disabled={Boolean(currentActiveJob) || isOccupied}
+                      disabled={isViewingActiveJob || isOccupied}
                       onClick={() => {
-                        if (!currentActiveJob && !isOccupied) setSelectedSiloId(sId);
+                        if (!isViewingActiveJob && !isOccupied) setSelectedSiloId(sId);
                       }}
                       className={`p-2.5 rounded-xl border text-left transition flex items-center justify-between ${
                         isSelected
@@ -1131,7 +1153,7 @@ export const BulkWorkflowView: React.FC = () => {
           {/* THE 3 PRIMARY LOADING ACTIONS                                */}
           {/* ============================================================ */}
           <div className="pt-2 space-y-2">
-            {!currentActiveJob ? (
+            {isViewingPendingTicket ? (
               /* BEFORE START: BUTTON 1 (START LOADING) */
               <button
                 type="button"
@@ -1157,7 +1179,7 @@ export const BulkWorkflowView: React.FC = () => {
                   </>
                 )}
               </button>
-            ) : (
+            ) : isViewingActiveJob && currentActiveJob ? (
               /* AFTER START: BUTTONS 2 & 3 (STOP/RESUME & COMPLETE & SAVE) */
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {/* BUTTON 2: STOP / PAUSE (or RESUME LOADING) */}
@@ -1212,10 +1234,10 @@ export const BulkWorkflowView: React.FC = () => {
                   </span>
                 </button>
               </div>
-            )}
+            ) : null}
 
             {/* Cancel Load link (Job Owner or Admin only) */}
-            {canControlJob && currentActiveJob && (
+            {canControlJob && isViewingActiveJob && currentActiveJob && (
               <div className="text-center pt-1">
                 <button
                   type="button"
