@@ -8,6 +8,7 @@ import {
   User
 } from '../types';
 import { BULK_BACKEND_URL, DEFAULT_USERS } from '../utils/constants';
+import { bulkGasFetch } from './offlineQueue';
 
 function getBackendUrl(): string {
   try {
@@ -138,7 +139,7 @@ export async function startBulkLoaderRemote(params: {
 }): Promise<{ success: boolean; job?: BulkActiveJob; error?: string; isDuplicateCompleted?: boolean }> {
   const url = getBackendUrl();
   try {
-    const res = await fetch(url, {
+    const res = await bulkGasFetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
       body: JSON.stringify({
@@ -178,7 +179,7 @@ export async function reportBulkStoppageRemote(params: {
 }): Promise<{ success: boolean; job?: BulkActiveJob; error?: string }> {
   const url = getBackendUrl();
   try {
-    const res = await fetch(url, {
+    const res = await bulkGasFetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
       body: JSON.stringify({
@@ -210,7 +211,7 @@ export async function resolveBulkStoppageRemote(params: {
 }): Promise<{ success: boolean; job?: BulkActiveJob; error?: string }> {
   const url = getBackendUrl();
   try {
-    const res = await fetch(url, {
+    const res = await bulkGasFetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
       body: JSON.stringify({
@@ -258,7 +259,7 @@ export async function completeBulkLoaderRemote(params: {
 }): Promise<{ success: boolean; completedJob?: any; error?: string }> {
   const url = getBackendUrl();
   try {
-    const res = await fetch(url, {
+    const res = await bulkGasFetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
       body: JSON.stringify({
@@ -290,7 +291,7 @@ export async function cancelBulkLoaderRemote(params: {
 }): Promise<{ success: boolean; error?: string }> {
   const url = getBackendUrl();
   try {
-    const res = await fetch(url, {
+    const res = await bulkGasFetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
       body: JSON.stringify({
@@ -310,7 +311,7 @@ export async function cancelBulkLoaderRemote(params: {
 export async function submitBulkEntry(entry: Partial<BulkEntry>, user?: User | null): Promise<{ success: boolean; id?: string; error?: string }> {
   const url = getBackendUrl();
   try {
-    const res = await fetch(url, {
+    const res = await bulkGasFetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
       body: JSON.stringify({
@@ -402,7 +403,7 @@ export async function fetchBulkDashboardMetrics(): Promise<BulkDashboardMetrics 
 
 // --- AUTHENTICATION & USER MANAGEMENT ---
 const LOCAL_USERS_KEY = 'spcc_bulk_users_store';
-const USERS_STORE_VER = 'spcc_bulk_users_v4_jawared';
+const USERS_STORE_VER = 'spcc_bulk_users_v5_admin';
 
 export function getUsers(): User[] {
   try {
@@ -438,7 +439,7 @@ export async function authenticateUser(userId: string, pin: string): Promise<{ s
       const res = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        body: JSON.stringify({ action: 'login', id: cleanId, pin: cleanPin })
+        body: JSON.stringify({ action: 'bulkLogin', id: cleanId, pin: cleanPin })
       });
       const data = await res.json();
       if (data.ok && data.user) {
@@ -504,7 +505,7 @@ export async function adminSaveUser(adminUser: User, targetId: string, displayNa
       method: 'POST',
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
       body: JSON.stringify({
-        action: 'saveAppUser',
+        action: 'saveBulkUser',
         id: adminUser.id || adminUser.name,
         pin: adminUser.pin || 'Jaw@red',
         targetId,
@@ -535,7 +536,7 @@ export async function adminDeleteUser(adminUser: User, targetId: string): Promis
       method: 'POST',
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
       body: JSON.stringify({
-        action: 'deleteAppUser',
+        action: 'deleteBulkUser',
         id: adminUser.id || adminUser.name,
         pin: adminUser.pin || 'Jaw@red',
         targetId

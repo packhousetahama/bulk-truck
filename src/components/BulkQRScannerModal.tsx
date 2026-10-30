@@ -27,25 +27,7 @@ export const BulkQRScannerModal: React.FC<BulkQRScannerModalProps> = ({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const animationFrameRef = useRef<number | null>(null);
 
-  // Sample payloads from verified plant tickets for instant 1-tap testing
-  const sampleVariant1 = '1|6L9JMQ|FNBKPPC|30|اقبال|+966556720380|4093-ASA';
-  const sampleVariant2 = JSON.stringify({
-    v: 1,
-    type: 'order',
-    orderNumber: 'DR5O4R',
-    silo: 6,
-    product: {
-      name: 'ORDINARY PORTLAND CEMENT TI',
-      variant: 'BULK ORDINARY PORTLAND CEMENT',
-      variantCode: 'FNBK1',
-      quantity: '24',
-      unit: 'tons'
-    },
-    resource: {
-      driver: { name: 'نظرت حسين', phone: '+966503565754', driverId: '2481358063' },
-      vehicle: { licensePlate: '7733-GRA' }
-    }
-  });
+
 
   // Handle photo capture / file upload with multi-pass scanning
   const handleFileScan = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -461,27 +443,7 @@ export const BulkQRScannerModal: React.FC<BulkQRScannerModalProps> = ({
               rows={2}
               className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-100 placeholder-slate-500 font-mono focus:outline-none focus:ring-2 focus:ring-amber-500"
             />
-            <div className="flex items-center justify-between gap-2 pt-1 flex-wrap">
-              {/* Plant Verified 1-Tap Sample Slips */}
-              <div className="flex items-center gap-1.5 flex-wrap">
-                <button
-                  type="button"
-                  onClick={() => handleDecodedPayload(sampleVariant2)}
-                  className="text-[10px] bg-slate-900 hover:bg-slate-800 border border-amber-500/50 text-amber-300 px-2 py-1 rounded-lg font-mono transition cursor-pointer shadow-sm"
-                  title="Ticket DR5O4R (Bulk OPC 24t - Silo 6)"
-                >
-                  ⚡ Silo 6 (DR5O4R)
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleDecodedPayload(sampleVariant1)}
-                  className="text-[10px] bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-300 px-2 py-1 rounded-lg font-mono transition cursor-pointer"
-                  title="Ticket 6L9JMQ (Pipe PPC 30t - Silo 2)"
-                >
-                  ⚡ Silo 2 (6L9JMQ)
-                </button>
-              </div>
-
+            <div className="flex items-center justify-end gap-2 pt-1">
               <button
                 type="button"
                 disabled={!manualText.trim()}
