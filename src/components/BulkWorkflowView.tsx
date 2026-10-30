@@ -35,6 +35,7 @@ export const BulkWorkflowView: React.FC = () => {
     activeJobs,
     activeNowMs,
     recentEntries,
+    refreshRecentEntries,
     startJob,
     reportStoppage,
     resolveStoppage,
@@ -803,6 +804,8 @@ export const BulkWorkflowView: React.FC = () => {
                   setPendingTicket(null);
                   setSelectedSiloId(null);
                   setConflictResolutionNote(undefined);
+                  setAllowForceReload(false);
+                  refreshRecentEntries();
                 }}
                 className="text-xs text-slate-400 hover:text-white underline cursor-pointer"
               >
@@ -850,6 +853,7 @@ export const BulkWorkflowView: React.FC = () => {
                         setPendingTicket(null);
                         setSelectedSiloId(null);
                         setAllowForceReload(false);
+                        refreshRecentEntries();
                       }}
                       className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold text-xs transition cursor-pointer"
                     >
