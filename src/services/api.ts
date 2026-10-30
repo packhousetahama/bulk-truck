@@ -88,7 +88,9 @@ export function normalizeActiveJob(raw: any, fallbackSiloId?: BulkSiloId): BulkA
     driverId: String(raw.driverId || '').trim() || undefined,
     ticketSiloRef: String(raw.ticketSiloRef || raw.siloRef || '').trim() || undefined,
     startTime: String(raw.startTime || ''),
+    startDate: raw.startDate ? String(raw.startDate) : undefined,
     startEpochMs: epoch,
+    startedAtTimestamp: Number(raw.startedAtTimestamp || epoch) || epoch,
     operator: String(raw.operator || raw.operatorName || 'Operator').trim(),
     shift: String(raw.shift || 'Shift A'),
     variant: raw.variant || 'VARIANT_1_PIPE',
@@ -150,6 +152,10 @@ export async function startBulkLoaderRemote(params: {
   conflictDetected?: boolean;
   conflictResolution?: string;
   forceReload?: boolean;
+  startTime?: string;
+  startDate?: string;
+  startEpochMs?: number;
+  startedAtTimestamp?: number;
   id?: string;
   userId?: string;
   pin?: string;
@@ -164,6 +170,9 @@ export async function startBulkLoaderRemote(params: {
         id: params.userId || params.id,
         pin: params.pin,
         forceReload: params.forceReload,
+        startTime: params.startTime,
+        startDate: params.startDate,
+        startedAtTimestamp: params.startedAtTimestamp || params.startEpochMs,
         ...params
       })
     });
@@ -258,7 +267,9 @@ export async function completeBulkLoaderRemote(params: {
   cementType?: CementType;
   authorisedTonnes?: number;
   startTime?: string;
+  startDate?: string;
   endTime?: string;
+  totalDowntimeSeconds?: number;
   loadId?: string;
   driverName?: string;
   driverPhone?: string;
@@ -283,6 +294,10 @@ export async function completeBulkLoaderRemote(params: {
         action: 'completeBulkLoader',
         id: params.userId || params.id,
         pin: params.pin,
+        startTime: params.startTime,
+        startDate: params.startDate,
+        endTime: params.endTime,
+        totalDowntimeSeconds: params.totalDowntimeSeconds,
         ...params
       })
     });

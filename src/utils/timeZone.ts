@@ -84,7 +84,12 @@ export function calculateDurationMinutes(start: string, end: string): number {
   if (startSec < 0 || endSec < 0) return 0;
 
   if (endSec < startSec) {
-    endSec += 24 * 3600; // Crossed midnight
+    // Only treat as midnight crossing if start is late evening (>= 18:00) and end is morning (<= 08:00)
+    if (startSec >= 18 * 3600 && endSec <= 8 * 3600) {
+      endSec += 24 * 3600; // Crossed midnight
+    } else {
+      endSec = startSec; // Prevent negative clock skew / 23h59m absurdity
+    }
   }
 
   const diffSec = Math.max(0, endSec - startSec);

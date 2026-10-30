@@ -44,7 +44,9 @@ export interface BulkActiveJob {
   driverId?: string;
   ticketSiloRef?: string;
   startTime: string; // "HH:MM:SS" or ISO
+  startDate?: string;
   startEpochMs: number;
+  startedAtTimestamp?: number;
   operator: string;
   shift: string;
   variant: BulkQRVariant;

@@ -1,3 +1,4 @@
+import { getSaudiCurrentTimeOnly, getSaudiCurrentDateOnly } from '../utils/timeZone';
 // Offline outbox for Google Apps Script writes in Bulk Truck PWA
 import { useSyncExternalStore } from 'react';
 
@@ -157,7 +158,14 @@ const ACK = (action: string, payload: any) =>
       queued: true,
       offline: true,
       message: 'Saved on device (offline queue). Will synchronize to Google Sheets once connection is restored.',
-      job: payload?.job || (payload?.siloId ? { ...payload, status: 'LOADING' } : undefined)
+      job: payload?.job || (payload?.siloId ? {
+        ...payload,
+        startTime: payload.startTime || getSaudiCurrentTimeOnly(),
+        startDate: payload.startDate || getSaudiCurrentDateOnly(),
+        startEpochMs: payload.startEpochMs || payload.startedAtTimestamp || Date.now(),
+        startedAtTimestamp: payload.startedAtTimestamp || payload.startEpochMs || Date.now(),
+        status: payload.status || 'LOADING'
+      } : undefined)
     }),
     { status: 200, headers: { 'Content-Type': 'application/json' } }
   );

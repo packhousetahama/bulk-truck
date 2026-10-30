@@ -729,100 +729,69 @@ export const BulkAppProvider: React.FC<{ children: React.ReactNode }> = ({ child
     try {
 
       const nowMs = Date.now();
+      const startTime = getSaudiCurrentTimeOnly();
+      const startDate = getSaudiCurrentDateOnly();
 
       const localJob: BulkActiveJob = {
-
         siloId,
-
         receiptNumber: ticket.receiptNumber,
-
         truckNumber: ticket.vehicleNumber,
-
         cementType: ticket.cementType,
-
         authorisedTonnes: ticket.authorisedTonnes,
-
         driverName: ticket.driverName,
-
         driverPhone: ticket.driverPhone,
-
         driverId: ticket.driverId,
-
         ticketSiloRef: ticket.printedSiloRef,
-
-        startTime: getSaudiCurrentTimeOnly(),
-
+        startTime,
+        startDate,
         startEpochMs: nowMs,
-
+        startedAtTimestamp: nowMs,
         operator: currentUser.name,
-
         shift: getSaudiCurrentShift(),
-
         variant: ticket.variant,
-
         conflictDetected: ticket.conflictDetected,
-
         conflictResolution,
-
         status: 'LOADING'
-
       };
 
-
-
       // Await backend verification first - NO optimistic screen flip to prevent bouncing back on duplicate/network errors!
-
       const res = await startBulkLoaderRemote({
-
         siloId,
-
         receiptNumber: ticket.receiptNumber,
-
         truckNumber: ticket.vehicleNumber,
-
         cementType: ticket.cementType,
-
         authorisedTonnes: ticket.authorisedTonnes,
-
         driverName: ticket.driverName,
-
         driverPhone: ticket.driverPhone,
-
         driverId: ticket.driverId,
-
         ticketSiloRef: ticket.printedSiloRef,
-
         operator: currentUser.name,
-
         id: currentUser.id,
-
         pin: currentUser.pin,
-
         variant: ticket.variant,
-
         conflictDetected: ticket.conflictDetected,
-
         conflictResolution,
-
-        forceReload: Boolean(forceReload)
-
+        forceReload: Boolean(forceReload),
+        startTime,
+        startDate,
+        startedAtTimestamp: nowMs,
+        startEpochMs: nowMs
       });
 
-
-
       if (!res.success) {
-
         showToast(res.error || 'Failed to start loader', 'error');
-
         return false;
-
       }
 
-
-
       // Backend succeeded and recorded load in Google Sheets! Now commit to active state
-
-      const committedJob = res.job || localJob;
+      const committedJob: BulkActiveJob = {
+        ...localJob,
+        ...(res.job || {}),
+        startTime: (res.job && res.job.startTime) ? res.job.startTime : localJob.startTime,
+        startDate: (res.job && (res.job as any).startDate) ? (res.job as any).startDate : startDate,
+        startEpochMs: localJob.startEpochMs,
+        startedAtTimestamp: localJob.startEpochMs
+      };
 
       setActiveJobs(prev => ({ ...prev, [siloId]: committedJob }));
 
@@ -1132,11 +1101,11 @@ export const BulkAppProvider: React.FC<{ children: React.ReactNode }> = ({ child
     try {
 
       const endTime = getSaudiCurrentTimeOnly();
+      const effectiveStartTime = job.startTime || getSaudiCurrentTimeOnly();
+      const effectiveStartDate = (job as any).startDate || getSaudiCurrentDateOnly();
 
-      const grossMinutes = calculateDurationMinutes(job.startTime, endTime);
-
+      const grossMinutes = calculateDurationMinutes(effectiveStartTime, endTime);
       const downtimeMinutes = Math.round(((job.totalDowntimeSeconds || 0) / 60) * 10) / 10;
-
       const netMinutes = Math.max(0, Math.round((grossMinutes - downtimeMinutes) * 10) / 10);
 
 
@@ -1175,9 +1144,13 @@ export const BulkAppProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
         authorisedTonnes: job.authorisedTonnes,
 
-        startTime: job.startTime,
+        startTime: effectiveStartTime,
+
+        startDate: effectiveStartDate,
 
         endTime,
+
+        totalDowntimeSeconds: job.totalDowntimeSeconds || 0,
 
         loadId: (job as any).loadId,
 
