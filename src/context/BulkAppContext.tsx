@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef, useCallback, Dispatch, SetStateAction } from 'react';
 
 import {
 
@@ -40,9 +40,15 @@ import {
 
   fetchBulkEntries,
 
-  authenticateUser
+  authenticateUser,
+
+  getBulkActiveJobsLocal,
+
+  saveBulkActiveJobsLocal
 
 } from '../services/api';
+
+import { hasPendingBulkForSilo } from '../services/offlineQueue';
 
 import { getSaudiCurrentDateOnly, getSaudiCurrentTimeOnly, getSaudiCurrentShift, calculateDurationMinutes } from '../utils/timeZone';
 
@@ -312,7 +318,15 @@ export const BulkAppProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   const [activeTab, setActiveTab] = useState<'workflow' | 'records' | 'manager'>('workflow');
 
-  const [activeJobs, setActiveJobs] = useState<Record<string, BulkActiveJob>>({});
+  const [activeJobs, setActiveJobsState] = useState<Record<string, BulkActiveJob>>(() => getBulkActiveJobsLocal());
+
+  const setActiveJobs: Dispatch<SetStateAction<Record<string, BulkActiveJob>>> = useCallback((updater) => {
+    setActiveJobsState(prev => {
+      const next = typeof updater === 'function' ? (updater as (p: Record<string, BulkActiveJob>) => Record<string, BulkActiveJob>)(prev) : updater;
+      saveBulkActiveJobsLocal(next);
+      return next;
+    });
+  }, []);
 
   const [activeNowMs, setActiveNowMs] = useState<number>(Date.now());
 
@@ -621,61 +635,71 @@ export const BulkAppProvider: React.FC<{ children: React.ReactNode }> = ({ child
   // Polling active bulk loaders
 
   const refreshActiveJobs = async () => {
-
-    try {
-
-      const remote = await fetchActiveBulkLoaders();
-
-      const now = Date.now();
-
-      const merged = { ...remote };
-
-
-
-      // Apply 15s grace window to prevent local jobs from disappearing while backend commits
-
-      Object.keys(graceMap.current).forEach(siloId => {
-
-        if (graceMap.current[siloId] && now - graceMap.current[siloId] < 15000) {
-
-          if (!merged[siloId] && activeJobs[siloId]) {
-
-            merged[siloId] = activeJobs[siloId];
-
-          }
-
-        } else {
-
-          delete graceMap.current[siloId];
-
-        }
-
-      });
-
-
-
-      setActiveJobs(merged);
-
-      setLastSynced(new Date());
-
-    } catch (err) {
-
-      console.warn('Failed to poll bulk loaders', err);
-
+    // If device is offline, NEVER overwrite local active jobs with empty data!
+    if (typeof navigator !== 'undefined' && !navigator.onLine) {
+      return;
     }
 
+    try {
+      const remote = await fetchActiveBulkLoaders();
+      const now = Date.now();
+
+      setActiveJobsState(currentJobs => {
+        const merged: Record<string, BulkActiveJob> = { ...remote };
+
+        // For any silo that has a local job:
+        // 1. If it has a pending outbox item (e.g. offline start), PRESERVE IT!
+        // 2. If it was created within the last 45 seconds, PRESERVE IT!
+        // 3. If local is in stoppage and remote is loading, PRESERVE stoppage state!
+        Object.keys(currentJobs).forEach(sKey => {
+          const sId = sKey as BulkSiloId;
+          const local = currentJobs[sId];
+          if (!local) return;
+
+          const isQueued = hasPendingBulkForSilo(sId);
+          const isGrace = graceMap.current[sId] && (now - graceMap.current[sId] < 45000);
+
+          if (!remote[sId]) {
+            if (isQueued || isGrace) {
+              merged[sId] = local;
+            }
+          } else {
+            if (local.status === 'STOPPAGE' && remote[sId].status !== 'STOPPAGE') {
+              merged[sId] = {
+                ...remote[sId],
+                status: 'STOPPAGE',
+                stoppageReason: local.stoppageReason || (local as any).activeProblem || 'STOPPAGE',
+                stoppageStartEpochMs: local.stoppageStartEpochMs,
+                totalDowntimeSeconds: Math.max(local.totalDowntimeSeconds || 0, remote[sId].totalDowntimeSeconds || 0)
+              };
+            }
+          }
+        });
+
+        saveBulkActiveJobsLocal(merged);
+        return merged;
+      });
+
+      setLastSynced(new Date());
+    } catch (err) {
+      console.warn('Failed to poll bulk loaders', err);
+    }
   };
 
-
-
   useEffect(() => {
-
     refreshActiveJobs();
-
     const interval = setInterval(refreshActiveJobs, 10000); // Poll every 10 seconds
 
-    return () => clearInterval(interval);
+    const handleSynced = () => {
+      refreshActiveJobs();
+      refreshRecentEntries();
+    };
+    window.addEventListener('bulk-outbox-synced', handleSynced);
 
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('bulk-outbox-synced', handleSynced);
+    };
   }, []);
 
 

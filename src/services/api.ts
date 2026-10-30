@@ -10,6 +10,23 @@ import {
 import { BULK_BACKEND_URL, DEFAULT_USERS } from '../utils/constants';
 import { bulkGasFetch } from './offlineQueue';
 
+const BULK_ACTIVE_JOBS_KEY = 'spcc_bulk_active_jobs_v1';
+
+export function getBulkActiveJobsLocal(): Record<string, BulkActiveJob> {
+  try {
+    const raw = localStorage.getItem(BULK_ACTIVE_JOBS_KEY);
+    return raw ? JSON.parse(raw) : {};
+  } catch {
+    return {};
+  }
+}
+
+export function saveBulkActiveJobsLocal(jobs: Record<string, BulkActiveJob>) {
+  try {
+    localStorage.setItem(BULK_ACTIVE_JOBS_KEY, JSON.stringify(jobs));
+  } catch {}
+}
+
 function getBackendUrl(): string {
   try {
     const saved = localStorage.getItem('spcc_bulk_backend_url');

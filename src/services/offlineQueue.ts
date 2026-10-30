@@ -269,6 +269,10 @@ export async function flushBulkOutbox(): Promise<void> {
   }
 }
 
+export function hasPendingBulkForSilo(siloId: string): boolean {
+  return items.some(i => i.status === 'pending' && (i.siloId === siloId || i.action === 'startBulkLoader'));
+}
+
 export function retryFailedBulkItems() {
   items.forEach(i => {
     if (i.status === 'failed') {
