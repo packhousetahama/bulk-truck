@@ -98,8 +98,8 @@ export const BULK_STOPPAGE_OPTIONS: BulkStoppageType[] = [
 
 // Pre-configured users with credentials (Admin + 6 Confirmed Operators + Legacy) - Unique 6-digit PINs
 export const DEFAULT_USERS: User[] = [
-  { id: 'admin', name: 'System Administrator', role: 'admin', enabled: true, pin: 'Jaw@red' },
-  { id: 'supervisor', name: 'Shift Supervisor', role: 'admin', enabled: true, pin: 'Jaw@red' },
+  { id: 'admin', name: 'ADMIN', role: 'admin', enabled: true, pin: 'Jaw@red' },
+  { id: 'supervisor', name: 'ADMIN', role: 'admin', enabled: true, pin: 'Jaw@red' },
   { id: 'ali_garni', name: 'Ali Garni', role: 'user', enabled: true, pin: '521401' },
   { id: 'gulam_rabani', name: 'Gulam Rabani', role: 'user', enabled: true, pin: '521402' },
   { id: 'siddiq_shari', name: 'Siddiq Shari', role: 'user', enabled: true, pin: '521403' },

@@ -858,21 +858,18 @@ export const BulkWorkflowView: React.FC = () => {
             <span>{t('scanQR')}</span>
           </button>
 
-          {/* Manual Entry Accordion */}
+          {/* Manual Entry Accordion - ADMIN ONLY */}
+          {currentUser?.role === 'admin' && (
           <div className="pt-2 border-t border-slate-800/80">
             <button
               type="button"
               onClick={() => {
-                if (!currentUser) {
-                  showToast(language === 'ar' ? 'يرجى تسجيل الدخول أولاً للإدخال اليدوي' : 'Authentication required: Please sign in with User ID and PIN.', 'warning');
-                  setIsUserModalOpen(true);
-                  return;
-                }
                 setShowManualInputs(!showManualInputs);
               }}
-              className="w-full text-center text-xs font-bold text-slate-400 hover:text-amber-400 transition cursor-pointer"
+              className="w-full text-center text-xs font-bold text-slate-600 hover:text-amber-500 transition cursor-pointer flex items-center justify-center gap-1.5"
             >
-              {showManualInputs ? '▲ Hide Manual Entry' : '▼ Or Enter Ticket Manually'}
+              <Lock className="w-3 h-3 text-slate-500" />
+              <span>{showManualInputs ? '▲ Hide Admin Manual Entry' : '▼ Admin Manual Entry Override'}</span>
             </button>
 
             {showManualInputs && (
@@ -969,6 +966,7 @@ export const BulkWorkflowView: React.FC = () => {
               </form>
             )}
           </div>
+          )}
         </div>
       )}
 

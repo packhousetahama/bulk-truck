@@ -98,23 +98,10 @@ export function parseBulkQrPayload(raw: string): ParseResult {
     };
   }
 
-  // 4. Fallback for clean alphanumeric slip codes
-  if (/^[A-Za-z0-9]{4,12}$/.test(cleanCode)) {
-    const ticket: BulkTicketData = {
-      variant: 'MANUAL',
-      receiptNumber: cleanCode,
-      vehicleNumber: '',
-      cementType: 'OPC',
-      authorisedTonnes: 30,
-      proposedSiloId: 'NEW_5',
-      rawPayload: trimmed
-    };
-    return { success: true, ticket };
-  }
-
+  // 4. Unknown code - do NOT silently fabricate a ticket. Show a clear error.
   return {
     success: false,
-    error: 'Unrecognized QR code format. Please check the ticket or enter details manually.'
+    error: `Unrecognized QR code: "${cleanCode}". Scan the actual Bulk Dispatch Ticket QR code. If the QR is unreadable, an administrator can use Manual Entry.`
   };
 }
 
