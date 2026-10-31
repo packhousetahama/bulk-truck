@@ -20,7 +20,8 @@ export interface OutboxItem {
 }
 
 const KEY = 'spcc_bulk_truck_outbox_v1';
-const WRITE_TIMEOUT_MS = 20000;
+// Increased from 20s to 35s to comfortably accommodate GAS 30s lock contention window
+const WRITE_TIMEOUT_MS = 35000;
 const MAX_ATTEMPTS = 8;
 
 const WRITE_ACTIONS = new Set([
